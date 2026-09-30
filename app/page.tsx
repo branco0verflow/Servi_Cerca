@@ -449,16 +449,15 @@ export default function Home() {
 
       <section ref={heroRef} className="hero-section">
         <div className="container-shell relative z-10">
-          <div className="mx-auto max-w-[780px] text-center">
+          <div className="mx-auto max-w-195 text-center">
             <span data-animate="intro" className="eyebrow">
               <Image
                 src={theme === "light" ? "/images/logo_white.png" : "/images/logo_black.png"}
                 alt="Servi Cerca"
                 width={2172}
                 height={724}
-                className="h-5 w-auto"
+                className="h-20 w-auto"
               />
-              Profesionales de tu zona
             </span>
             <h1 data-animate="intro" className="hero-title">
               Encontrá a quien lo hace <em>cerca.</em>
