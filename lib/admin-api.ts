@@ -79,3 +79,70 @@ export async function logoutAdmin(): Promise<void> {
     headers: { "X-XSRF-TOKEN": token },
   });
 }
+
+// ---------- Catálogo: Tipos (categorías) y Trabajos (oficios) ----------
+
+export type Tipo = {
+  id: number;
+  nombre: string;
+  descripcion: string | null;
+  activo: boolean;
+  cantidadOficios: number;
+};
+
+export type TipoDatos = {
+  nombre: string;
+  descripcion: string | null;
+  activo: boolean;
+};
+
+export type Trabajo = {
+  id: number;
+  nombre: string;
+  slug: string;
+  descripcion: string | null;
+  activo: boolean;
+  categoria: { id: number; nombre: string };
+  categoriaActiva: boolean;
+  /** Lo usa algún operador o trabajo registrado: no se puede eliminar, solo desactivar. */
+  enUso: boolean;
+};
+
+export type TrabajoDatos = {
+  nombre: string;
+  descripcion: string | null;
+  categoriaId: number;
+  activo: boolean;
+};
+
+async function pedir<T>(metodo: "GET" | "POST" | "PUT" | "DELETE", ruta: string, cuerpo?: unknown): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (metodo !== "GET") headers["X-XSRF-TOKEN"] = await obtenerCsrf();
+  if (cuerpo !== undefined) headers["Content-Type"] = "application/json";
+  const respuesta = await fetch(ruta, {
+    method: metodo,
+    credentials: "include",
+    cache: "no-store",
+    headers,
+    body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
+  });
+  if (!respuesta.ok) {
+    if (respuesta.status === 401) {
+      throw new AdminApiError("Tu sesión expiró. Volvé a ingresar.", 401, "NO_AUTENTICADO");
+    }
+    throw await aError(respuesta);
+  }
+  return (respuesta.status === 204 ? undefined : await respuesta.json()) as T;
+}
+
+export const listarTipos = () => pedir<Tipo[]>("GET", "/api/admin/categories");
+export const crearTipo = (datos: TipoDatos) => pedir<Tipo>("POST", "/api/admin/categories", datos);
+export const actualizarTipo = (id: number, datos: TipoDatos) =>
+  pedir<Tipo>("PUT", `/api/admin/categories/${id}`, datos);
+export const eliminarTipo = (id: number) => pedir<void>("DELETE", `/api/admin/categories/${id}`);
+
+export const listarTrabajos = () => pedir<Trabajo[]>("GET", "/api/admin/trades");
+export const crearTrabajo = (datos: TrabajoDatos) => pedir<Trabajo>("POST", "/api/admin/trades", datos);
+export const actualizarTrabajo = (id: number, datos: TrabajoDatos) =>
+  pedir<Trabajo>("PUT", `/api/admin/trades/${id}`, datos);
+export const eliminarTrabajo = (id: number) => pedir<void>("DELETE", `/api/admin/trades/${id}`);
