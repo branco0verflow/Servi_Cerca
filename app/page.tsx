@@ -199,7 +199,7 @@ function ProfessionalCard({
         {professional.description}
       </p>
 
-        </span>
+      <div className="mt-5 flex flex-col gap-3 border-t border-border/80 pt-5">
         <a
           className="contact-button"
           href={`https://wa.me/${professional.phone}?text=${message}`}
