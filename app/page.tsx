@@ -8,7 +8,6 @@ import {
   ArrowRight,
   BriefcaseBusiness,
   ChevronDown,
-  Clock3,
   MapPin,
   MessageCircle,
   Moon,
@@ -67,7 +66,6 @@ type Professional = {
   reviews: number;
   services: string[];
   description: string;
-  response: string;
   phone: string;
   tone: string;
 };
@@ -95,7 +93,6 @@ const professionals: Professional[] = [
     services: ["Carpintero", "Cerrajero", "Albañil"],
     description:
       "Soluciones prolijas para el hogar, muebles a medida y reparaciones generales.",
-    response: "Responde en menos de 20 min",
     phone: "59899123456",
     tone: "from-blue-500 to-blue-800",
   },
@@ -112,7 +109,6 @@ const professionals: Professional[] = [
     ],
     description:
       "Instalaciones seguras, diagnósticos claros y presupuesto antes de comenzar.",
-    response: "Disponible hoy",
     phone: "59898765432",
     tone: "from-emerald-400 to-emerald-800",
   },
@@ -124,7 +120,6 @@ const professionals: Professional[] = [
     services: ["Carpintero", "Podador", "Cortador de pasto", "Jardinero"],
     description:
       "Cuidado de jardines, poda responsable y mantenimiento de terrenos.",
-    response: "Responde en menos de 1 hora",
     phone: "59895678901",
     tone: "from-cyan-500 to-teal-800",
   },
@@ -204,10 +199,6 @@ function ProfessionalCard({
         {professional.description}
       </p>
 
-      <div className="mt-5 flex flex-col gap-3 border-t border-border/80 pt-5">
-        <span className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Clock3 className="size-4 text-emerald-400" />
-          {professional.response}
         </span>
         <a
           className="contact-button"
