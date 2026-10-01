@@ -108,3 +108,30 @@ export async function registrarOperador(
   if (!respuesta.ok) throw await aError(respuesta);
   return (await respuesta.json()) as RegistroRespuesta;
 }
+
+// ---------- Búsqueda pública de operadores ----------
+
+export type OperadorResumen = {
+  id: number;
+  nombre: string;
+  apellido: string;
+  nombreComercial: string | null;
+  descripcionBreve: string | null;
+  fotoPerfilUrl: string | null;
+  whatsapp: string;
+  oficio: {
+    oficioId: number;
+    nombre: string;
+    descripcionServicio: string | null;
+    precioDesde: number | null;
+    moneda: Moneda | null;
+  };
+  calificacionPromedio: number | null;
+  cantidadCalificaciones: number;
+};
+
+export type ResultadoBusqueda = { content: OperadorResumen[]; totalElements: number };
+
+/** Operadores aprobados que ofrecen ese trabajo en esa localidad, mejor calificados primero. */
+export const buscarOperadores = (localidadId: number, oficioId: number) =>
+  obtener<ResultadoBusqueda>(`/api/public/operators/search?locationId=${localidadId}&tradeId=${oficioId}&size=24`);

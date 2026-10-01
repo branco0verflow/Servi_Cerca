@@ -27,48 +27,22 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox";
+import { ServiceCarousel } from "@/components/ui/service-carousel";
 import {
-  eventServiceNames,
-  ServiceCarousel,
-} from "@/components/ui/service-carousel";
+  Localidad,
+  Oficio,
+  OperadorResumen,
+  buscarOperadores,
+  listarLocalidades,
+  listarOficios,
+} from "@/lib/public-api";
 
-const locations = [
-  "Colonia del Sacramento",
-  "Rosario",
-  "Nueva Helvecia",
-  "Nueva Palmira",
-  "Carmelo",
-  "Conchillas",
-  "Miguelete",
-  "Juan Lacaze",
-];
+const LOCALIDAD_PREDETERMINADA = "Colonia del Sacramento";
 
-const services = [
-  "Albañil",
-  "Carpintero",
-  "Cerrajero",
-  "Cortador de pasto",
-  "Electricista",
-  "Escribano",
-  "Instalador de aire acondicionado",
-  "Jardinero",
-  "Pintor",
-  "Plomero",
-  "Podador",
-  "Técnico de electrodomésticos",
-  ...eventServiceNames,
-].sort((a, b) => a.localeCompare(b, "es"));
+// Colores del avatar con iniciales, para operadores sin foto de perfil.
+const AVATAR_TONES = ["from-blue-500 to-blue-800", "from-emerald-400 to-emerald-800", "from-cyan-500 to-teal-800"];
 
-type Professional = {
-  name: string;
-  initials: string;
-  rating: string;
-  reviews: number;
-  services: string[];
-  description: string;
-  phone: string;
-  tone: string;
-};
+type Busqueda = { clave: string; operadores: OperadorResumen[]; total: number; error: boolean };
 
 type WebMcpContext = {
   registerTool: (
@@ -84,46 +58,14 @@ type WebMcpContext = {
   ) => void | Promise<void>;
 };
 
-const professionals: Professional[] = [
-  {
-    name: "Martín Silva",
-    initials: "MS",
-    rating: "4.9",
-    reviews: 38,
-    services: ["Carpintero", "Cerrajero", "Albañil"],
-    description:
-      "Soluciones prolijas para el hogar, muebles a medida y reparaciones generales.",
-    phone: "59899123456",
-    tone: "from-blue-500 to-blue-800",
-  },
-  {
-    name: "Lucía Fernández",
-    initials: "LF",
-    rating: "5.0",
-    reviews: 24,
-    services: [
-      "Carpintero",
-      "Electricista",
-      "Instalador de aire acondicionado",
-      "Técnico de electrodomésticos",
-    ],
-    description:
-      "Instalaciones seguras, diagnósticos claros y presupuesto antes de comenzar.",
-    phone: "59898765432",
-    tone: "from-emerald-400 to-emerald-800",
-  },
-  {
-    name: "Diego Pereira",
-    initials: "DP",
-    rating: "4.8",
-    reviews: 51,
-    services: ["Carpintero", "Podador", "Cortador de pasto", "Jardinero"],
-    description:
-      "Cuidado de jardines, poda responsable y mantenimiento de terrenos.",
-    phone: "59895678901",
-    tone: "from-cyan-500 to-teal-800",
-  },
-];
+/** Para comparar nombres sin distinguir mayúsculas ni tildes. */
+function normalizar(texto: string) {
+  return texto
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .trim();
+}
 
 function Brand({ theme }: { theme: "dark" | "light" }) {
   return (
@@ -142,37 +84,63 @@ function Brand({ theme }: { theme: "dark" | "light" }) {
 
 function ProfessionalCard({
   professional,
-  selectedService,
   location,
 }: {
-  professional: Professional;
-  selectedService: string;
+  professional: OperadorResumen;
   location: string;
 }) {
+  const { oficio } = professional;
   const message = encodeURIComponent(
-    `Hola ${professional.name}, te encontré en Servi Cerca. Necesito ${selectedService.toLowerCase()} en ${location}. ¿Podemos coordinar?`,
+    `Hola ${professional.nombre}, te encontré en Servi Cerca. Necesito ${oficio.nombre.toLowerCase()} en ${location}. ¿Podemos coordinar?`,
   );
+  const descripcion = oficio.descripcionServicio || professional.descripcionBreve;
+  const [fotoRota, setFotoRota] = useState(false);
 
   return (
     <article className="professional-card">
       <div className="flex items-start gap-4">
         <div
-          className={`avatar bg-gradient-to-br ${professional.tone}`}
+          className={`avatar bg-gradient-to-br ${AVATAR_TONES[professional.id % AVATAR_TONES.length]}`}
           role="img"
-          aria-label={`Foto de perfil de ${professional.name}`}
+          aria-label={`Foto de perfil de ${professional.nombre} ${professional.apellido}`}
         >
-          <span>{professional.initials}</span>
+          {professional.fotoPerfilUrl && !fotoRota ? (
+            // eslint-disable-next-line @next/next/no-img-element -- URL firmada de S3 con vencimiento, no pasa por next/image
+            <img
+              src={professional.fotoPerfilUrl}
+              alt=""
+              className="absolute inset-0 size-full object-cover"
+              onError={() => setFotoRota(true)}
+            />
+          ) : (
+            <span>
+              {professional.nombre.charAt(0)}
+              {professional.apellido.charAt(0)}
+            </span>
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <h3 className="text-lg font-semibold tracking-[-0.02em]">
-                {professional.name}
+                {professional.nombre} {professional.apellido}
               </h3>
+              {professional.nombreComercial && (
+                <p className="text-sm text-muted-foreground">{professional.nombreComercial}</p>
+              )}
               <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Star className="size-4 fill-amber-400 text-amber-400" />
-                <strong className="text-foreground">{professional.rating}</strong>
-                <span>({professional.reviews} reseñas)</span>
+                {professional.cantidadCalificaciones > 0 && professional.calificacionPromedio !== null ? (
+                  <>
+                    <Star className="size-4 fill-amber-400 text-amber-400" />
+                    <strong className="text-foreground">{professional.calificacionPromedio.toFixed(1)}</strong>
+                    <span>
+                      ({professional.cantidadCalificaciones}{" "}
+                      {professional.cantidadCalificaciones === 1 ? "reseña" : "reseñas"})
+                    </span>
+                  </>
+                ) : (
+                  <span>Sin reseñas todavía</span>
+                )}
               </div>
             </div>
             <span className="verified-badge">
@@ -183,32 +151,26 @@ function ProfessionalCard({
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2">
-        {professional.services.map((service) => (
-          <span
-            className={
-              service === selectedService ? "service-tag active" : "service-tag"
-            }
-            key={service}
-          >
-            {service}
+        <span className="service-tag active">{oficio.nombre}</span>
+        {oficio.precioDesde !== null && (
+          <span className="service-tag">
+            Desde {oficio.moneda === "USD" ? "US$" : "$U"} {new Intl.NumberFormat("es-UY").format(oficio.precioDesde)}
           </span>
-        ))}
+        )}
       </div>
 
-      <p className="mt-4 min-h-[48px] text-[0.95rem] leading-6 text-muted-foreground">
-        {professional.description}
-      </p>
+      <p className="mt-4 min-h-[48px] text-[0.95rem] leading-6 text-muted-foreground">{descripcion}</p>
 
       <div className="mt-5 flex flex-col gap-3 border-t border-border/80 pt-5">
         <a
           className="contact-button"
-          href={`https://wa.me/${professional.phone}?text=${message}`}
+          href={`https://wa.me/${professional.whatsapp}?text=${message}`}
           target="_blank"
           rel="noreferrer"
-          aria-label={`Contactar a ${professional.name} por WhatsApp`}
+          aria-label={`Contactar a ${professional.nombre} por WhatsApp`}
         >
           <MessageCircle className="size-4" />
-          Contactar a {professional.name.split(" ")[0]}
+          Contactar a {professional.nombre}
         </a>
       </div>
     </article>
@@ -217,20 +179,59 @@ function ProfessionalCard({
 
 export default function Home() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
-  const [location, setLocation] = useState("Colonia del Sacramento");
+  const [localidades, setLocalidades] = useState<Localidad[]>([]);
+  const [oficios, setOficios] = useState<Oficio[] | null>(null);
+  const [localidadElegida, setLocalidadElegida] = useState<number | null>(null);
   const [selectedService, setSelectedService] = useState("");
+  const [busqueda, setBusqueda] = useState<Busqueda | null>(null);
   const heroRef = useRef<HTMLElement>(null);
   const resultsRef = useRef<HTMLElement>(null);
 
-  const matches = useMemo(
-    () =>
-      selectedService
-        ? professionals.filter((professional) =>
-            professional.services.includes(selectedService),
-          )
-        : [],
-    [selectedService],
+  const services = useMemo(
+    () => (oficios ?? []).map((oficio) => oficio.nombre).sort((a, b) => a.localeCompare(b, "es")),
+    [oficios],
   );
+  const localidad =
+    localidades.find((l) => l.id === localidadElegida) ??
+    localidades.find((l) => l.nombre === LOCALIDAD_PREDETERMINADA) ??
+    localidades[0] ??
+    null;
+  // El carrusel puede sugerir un servicio que todavía no existe como trabajo: en ese caso no hay resultados.
+  const oficio = useMemo(
+    () => (oficios ?? []).find((o) => normalizar(o.nombre) === normalizar(selectedService)) ?? null,
+    [oficios, selectedService],
+  );
+  const localidadId = localidad?.id ?? null;
+  const oficioId = oficio?.id ?? null;
+  const clave = localidadId !== null && oficioId !== null ? `${localidadId}-${oficioId}` : null;
+  const resultado = busqueda && busqueda.clave === clave ? busqueda : null;
+  const buscando = selectedService !== "" && (oficios === null || (clave !== null && resultado === null));
+  const location = localidad?.nombre ?? "";
+
+  useEffect(() => {
+    listarLocalidades()
+      .then(setLocalidades)
+      .catch(() => setLocalidades([]));
+    listarOficios()
+      .then(setOficios)
+      .catch(() => setOficios([]));
+  }, []);
+
+  useEffect(() => {
+    if (localidadId === null || oficioId === null) return;
+    const claveBuscada = `${localidadId}-${oficioId}`;
+    let vigente = true;
+    buscarOperadores(localidadId, oficioId)
+      .then(
+        (r) =>
+          vigente &&
+          setBusqueda({ clave: claveBuscada, operadores: r.content, total: r.totalElements, error: false }),
+      )
+      .catch(() => vigente && setBusqueda({ clave: claveBuscada, operadores: [], total: 0, error: true }));
+    return () => {
+      vigente = false;
+    };
+  }, [localidadId, oficioId]);
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem("servi-cerca-theme");
@@ -255,25 +256,25 @@ export default function Home() {
     const modelContext = (
       document as Document & { modelContext?: WebMcpContext }
     ).modelContext;
-    if (!modelContext?.registerTool) return;
+    if (!modelContext?.registerTool || localidades.length === 0 || !oficios || oficios.length === 0) return;
 
     const lifecycle = new AbortController();
     const tool = {
       name: "stage_professional_search",
       title: "Buscar profesionales",
       description:
-        "Selecciona una localidad y un servicio en Servi Cerca, y muestra los profesionales demo disponibles.",
+        "Selecciona una localidad y un servicio en Servi Cerca, y muestra los profesionales disponibles.",
       inputSchema: {
         type: "object",
         properties: {
-          location: { type: "string", enum: locations },
-          service: { type: "string", enum: services },
+          location: { type: "string", enum: localidades.map((l) => l.nombre) },
+          service: { type: "string", enum: oficios.map((o) => o.nombre) },
         },
         required: ["location", "service"],
         additionalProperties: false,
       },
       annotations: { readOnlyHint: false, untrustedContentHint: false },
-      execute(input: unknown) {
+      async execute(input: unknown) {
         if (!input || typeof input !== "object") {
           throw new Error("La búsqueda debe incluir localidad y servicio.");
         }
@@ -281,20 +282,21 @@ export default function Home() {
           location?: string;
           service?: string;
         };
-        if (!nextLocation || !locations.includes(nextLocation)) {
+        const nuevaLocalidad = localidades.find((l) => l.nombre === nextLocation);
+        if (!nuevaLocalidad) {
           throw new Error("La localidad seleccionada no está disponible.");
         }
-        if (!service || !services.includes(service)) {
+        const nuevoOficio = oficios.find((o) => o.nombre === service);
+        if (!nuevoOficio) {
           throw new Error("El servicio seleccionado no está disponible.");
         }
-        setLocation(nextLocation);
-        setSelectedService(service);
+        setLocalidadElegida(nuevaLocalidad.id);
+        setSelectedService(nuevoOficio.nombre);
+        const encontrados = await buscarOperadores(nuevaLocalidad.id, nuevoOficio.id);
         return {
-          location: nextLocation,
-          service,
-          professionalsFound: professionals.filter((professional) =>
-            professional.services.includes(service),
-          ).length,
+          location: nuevaLocalidad.nombre,
+          service: nuevoOficio.nombre,
+          professionalsFound: encontrados.totalElements,
         };
       },
     };
@@ -308,16 +310,16 @@ export default function Home() {
     }
 
     return () => lifecycle.abort();
-  }, []);
+  }, [localidades, oficios]);
 
   useEffect(() => {
-    if (!selectedService || !resultsRef.current) return;
+    if (!resultado || !resultsRef.current) return;
     gsap.fromTo(
       resultsRef.current.querySelectorAll(".professional-card, .empty-result"),
       { y: 20, opacity: 0 },
       { y: 0, opacity: 1, duration: 0.55, stagger: 0.08, ease: "power3.out" },
     );
-  }, [selectedService, location]);
+  }, [resultado]);
 
   function toggleTheme() {
     const nextTheme = theme === "dark" ? "light" : "dark";
@@ -388,12 +390,13 @@ export default function Home() {
               <div className="select-wrap">
                 <select
                   id="location"
-                  value={location}
-                  onChange={(event) => setLocation(event.target.value)}
+                  value={localidad?.id ?? ""}
+                  onChange={(event) => setLocalidadElegida(Number(event.target.value))}
+                  disabled={localidades.length === 0}
                 >
-                  {locations.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
+                  {localidades.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.nombre}
                     </option>
                   ))}
                 </select>
@@ -450,20 +453,32 @@ export default function Home() {
                     {selectedService} <span>cerca tuyo</span>
                   </h2>
                 </div>
-                <p>
-                  {matches.length} {matches.length === 1 ? "profesional" : "profesionales"}
-                </p>
+                {resultado && !resultado.error && (
+                  <p>
+                    {resultado.total} {resultado.total === 1 ? "profesional" : "profesionales"}
+                  </p>
+                )}
               </div>
 
-              {matches.length > 0 ? (
+              {buscando ? (
+                <div className="results-placeholder">
+                  <Search className="size-5" />
+                  Buscando profesionales…
+                </div>
+              ) : resultado?.error ? (
+                <div className="empty-result">
+                  <span className="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary">
+                    <Search className="size-5" />
+                  </span>
+                  <div>
+                    <h3>No pudimos cargar los profesionales</h3>
+                    <p>Revisá tu conexión y volvé a intentar en un momento.</p>
+                  </div>
+                </div>
+              ) : resultado && resultado.operadores.length > 0 ? (
                 <div className="professionals-grid">
-                  {matches.map((professional) => (
-                    <ProfessionalCard
-                      key={professional.name}
-                      professional={professional}
-                      selectedService={selectedService}
-                      location={location}
-                    />
+                  {resultado.operadores.map((professional) => (
+                    <ProfessionalCard key={professional.id} professional={professional} location={location} />
                   ))}
                 </div>
               ) : (
@@ -472,11 +487,10 @@ export default function Home() {
                     <Search className="size-5" />
                   </span>
                   <div>
-                    <h3>Todavía no hay perfiles demo para este servicio</h3>
-                    <p>
-                      Probá con Carpintero, Electricista, Cerrajero, Podador o
-                      Cortador de pasto.
-                    </p>
+                    <h3>
+                      Todavía no hay profesionales de {selectedService.toLowerCase()} en {location}
+                    </h3>
+                    <p>Probá con otra localidad o con otro servicio.</p>
                   </div>
                 </div>
               )}
