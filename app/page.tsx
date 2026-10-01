@@ -1,12 +1,12 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import gsap from "gsap";
 import {
   ArrowRight,
   BriefcaseBusiness,
-  Check,
   ChevronDown,
   Clock3,
   MapPin,
@@ -28,14 +28,6 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   eventServiceNames,
   ServiceCarousel,
@@ -232,81 +224,10 @@ function ProfessionalCard({
   );
 }
 
-function RegistrationForm() {
-  const [sent, setSent] = useState(false);
-
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSent(true);
-  }
-
-  if (sent) {
-    return (
-      <div className="flex min-h-[340px] flex-col items-center justify-center text-center">
-        <span className="mb-5 grid size-16 place-items-center rounded-full bg-emerald-500/15 text-emerald-400">
-          <Check className="size-8" />
-        </span>
-        <h3 className="text-2xl font-semibold tracking-[-0.03em]">
-          ¡Recibimos tus datos!
-        </h3>
-        <p className="mt-3 max-w-sm leading-6 text-muted-foreground">
-          Esta es una confirmación demo. Cuando conectemos el backend, el registro
-          quedará guardado para su revisión.
-        </p>
-        <Button className="mt-7" variant="outline" onClick={() => setSent(false)}>
-          Volver al formulario
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <form className="registration-form" onSubmit={submit}>
-      <div className="form-grid">
-        <label>
-          Nombre completo
-          <input required placeholder="Ej. Ana Rodríguez" />
-        </label>
-        <label>
-          WhatsApp
-          <input required inputMode="tel" placeholder="Ej. 099 123 456" />
-        </label>
-      </div>
-      <label>
-        Localidad
-        <select defaultValue="Colonia del Sacramento">
-          {locations.map((location) => (
-            <option key={location}>{location}</option>
-          ))}
-        </select>
-      </label>
-      <label>
-        Servicios que ofrecés
-        <input required placeholder="Ej. Carpintería, reparaciones, muebles" />
-      </label>
-      <label>
-        Contanos brevemente sobre tu trabajo
-        <textarea
-          rows={3}
-          placeholder="Experiencia, horarios y zona en la que trabajás..."
-        />
-      </label>
-      <Button type="submit" className="h-12 w-full rounded-xl">
-        Enviar solicitud <ArrowRight className="size-4" />
-      </Button>
-      <p className="text-center text-xs leading-5 text-muted-foreground">
-        Al enviar aceptás que Servi Cerca revise la información antes de publicar
-        tu perfil.
-      </p>
-    </form>
-  );
-}
-
 export default function Home() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [location, setLocation] = useState("Colonia del Sacramento");
   const [selectedService, setSelectedService] = useState("");
-  const [registrationOpen, setRegistrationOpen] = useState(false);
   const heroRef = useRef<HTMLElement>(null);
   const resultsRef = useRef<HTMLElement>(null);
 
@@ -592,23 +513,12 @@ export default function Home() {
                 que sabés hacer.
               </p>
             </div>
-            <Dialog open={registrationOpen} onOpenChange={setRegistrationOpen}>
-              <DialogTrigger asChild>
-                <Button className="provider-button">
-                  Registrarme para ofrecer mis servicios
-                  <ArrowRight className="size-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="registration-dialog">
-                <DialogHeader>
-                  <DialogTitle>Sumate a Servi Cerca</DialogTitle>
-                  <DialogDescription>
-                    Completá tus datos para crear una solicitud de perfil profesional.
-                  </DialogDescription>
-                </DialogHeader>
-                <RegistrationForm />
-              </DialogContent>
-            </Dialog>
+            <Button asChild className="provider-button">
+              <Link href="/registro">
+                Registrarme para ofrecer mis servicios
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
           </div>
         </div>
       </section>

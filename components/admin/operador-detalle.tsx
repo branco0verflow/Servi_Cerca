@@ -1,0 +1,474 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { ArrowLeft, Check, ImageOff, MessageCircle, Star, X } from "lucide-react";
+import { toast } from "sonner";
+
+import { useAdminError } from "@/components/admin/admin-shell";
+import { EstadoOperadorBadge, fecha } from "@/components/admin/operadores-section";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  AdminApiError,
+  OperadorDetalle,
+  VersionDetalle,
+  VersionRevision,
+  aprobarVersion,
+  obtenerOperador,
+  obtenerRevision,
+  reactivarOperador,
+  rechazarVersion,
+  suspenderOperador,
+} from "@/lib/admin-api";
+
+const TIPO_PUBLICACION = {
+  TRABAJO_REALIZADO: "Trabajo realizado",
+  SERVICIO_DESTACADO: "Servicio destacado",
+  PRODUCTO: "Producto",
+} as const;
+
+type Confirmacion = "aprobar" | "suspender" | null;
+
+type DatosOperador = { operador: OperadorDetalle; revision: VersionRevision | null };
+
+/** El operador y la versión a mostrar: la pendiente o, si no tiene nada publicado, la última enviada. */
+async function obtenerDatos(id: number): Promise<DatosOperador> {
+  const operador = await obtenerOperador(id);
+  const pendiente = operador.versiones.find((v) => v.estadoVersion === "PENDIENTE_REVISION");
+  const ultima = [...operador.versiones].sort((a, b) => b.numeroVersion - a.numeroVersion)[0];
+  const aMostrar = pendiente ?? (operador.versionPublicada ? undefined : ultima);
+  return { operador, revision: aMostrar ? await obtenerRevision(aMostrar.versionId) : null };
+}
+
+export function OperadorDetalleSection({ id }: { id: number }) {
+  const manejarError = useAdminError();
+  const [detalle, setDetalle] = useState<OperadorDetalle | null>(null);
+  // Revisión de la versión pendiente; si no hay ni versión publicada, la última versión enviada.
+  const [revision, setRevision] = useState<VersionRevision | null>(null);
+  const [noEncontrado, setNoEncontrado] = useState(false);
+  const [confirmando, setConfirmando] = useState<Confirmacion>(null);
+  const [rechazando, setRechazando] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const [procesando, setProcesando] = useState(false);
+
+  const aplicar = useCallback((datos: DatosOperador) => {
+    setRevision(datos.revision);
+    setDetalle(datos.operador);
+  }, []);
+
+  useEffect(() => {
+    let vigente = true;
+    obtenerDatos(id)
+      .then((datos) => vigente && aplicar(datos))
+      .catch((e) => {
+        if (e instanceof AdminApiError && e.status === 404) setNoEncontrado(true);
+        else manejarError(e);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [id, aplicar, manejarError]);
+
+  async function ejecutar(accion: () => Promise<unknown>, mensaje: string) {
+    setProcesando(true);
+    try {
+      await accion();
+      toast.success(mensaje);
+      setConfirmando(null);
+      setRechazando(false);
+      setMotivo("");
+      aplicar(await obtenerDatos(id));
+    } catch (e) {
+      manejarError(e);
+    } finally {
+      setProcesando(false);
+    }
+  }
+
+  if (noEncontrado) {
+    return (
+      <div>
+        <Volver />
+        <p className="mt-6 text-muted-foreground">El operador no existe.</p>
+      </div>
+    );
+  }
+
+  if (!detalle) {
+    return (
+      <div className="space-y-4" aria-busy="true">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  const pendiente = revision?.versionSolicitada.estadoVersion === "PENDIENTE_REVISION" ? revision : null;
+  const datos: VersionDetalle | null = revision?.versionSolicitada ?? detalle.versionPublicada;
+  const ultimoRechazo = detalle.versiones.find((v) => v.estadoVersion === "RECHAZADA" && v.motivoRechazo);
+
+  return (
+    <section>
+      <Volver />
+
+      <div className="mt-4 mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-semibold">{datos ? `${datos.nombre} ${datos.apellido}` : `Operador ${id}`}</h1>
+            <EstadoOperadorBadge estado={detalle.estado} />
+          </div>
+          {datos?.nombreComercial && <p className="mt-1 text-muted-foreground">{datos.nombreComercial}</p>}
+          <p className="mt-1 text-sm text-muted-foreground">
+            Registrado el {fecha(detalle.fechaCreacion)}
+            {detalle.fechaActivacion && ` · Activo desde el ${fecha(detalle.fechaActivacion)}`}
+            {detalle.calificaciones.cantidad > 0 && (
+              <span className="ml-2 inline-flex items-center gap-1">
+                · <Star className="size-3.5" /> {detalle.calificaciones.promedio} ({detalle.calificaciones.cantidad})
+              </span>
+            )}
+          </p>
+        </div>
+        {detalle.estado === "ACTIVO" && (
+          <Button variant="outline" onClick={() => setConfirmando("suspender")} disabled={procesando}>
+            Suspender
+          </Button>
+        )}
+        {detalle.estado === "SUSPENDIDO" && (
+          <Button
+            variant="outline"
+            onClick={() => ejecutar(() => reactivarOperador(id), "El operador volvió a estar activo.")}
+            disabled={procesando}
+          >
+            {procesando && <Spinner />} Reactivar
+          </Button>
+        )}
+      </div>
+
+      {pendiente && (
+        <Tarjeta className="mb-6 border-primary/40">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="font-semibold">
+                {pendiente.esRegistroInicial ? "Registro nuevo pendiente de revisión" : "Cambios pendientes de revisión"}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Enviado el {fecha(pendiente.versionSolicitada.fechaEnvioRevision)}: revisá los datos de abajo antes de
+                decidir.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setRechazando(true)} disabled={procesando}>
+                <X /> Rechazar
+              </Button>
+              <Button onClick={() => setConfirmando("aprobar")} disabled={procesando}>
+                <Check /> Aprobar
+              </Button>
+            </div>
+          </div>
+          {!pendiente.esRegistroInicial && pendiente.diferencias && (
+            <div className="mt-4 border-t border-border pt-4 text-sm">
+              {pendiente.diferencias.camposModificados.length > 0 ? (
+                <>
+                  <p className="mb-2 font-medium">Datos que cambian:</p>
+                  <ul className="space-y-1 text-muted-foreground">
+                    {pendiente.diferencias.camposModificados.map((c) => (
+                      <li key={c.campo}>
+                        <span className="text-foreground">{c.campo}:</span> {c.anterior || "—"} → {c.nuevo || "—"}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p className="text-muted-foreground">
+                  Los cambios están en trabajos, localidades o publicaciones: compará con el perfil publicado.
+                </p>
+              )}
+            </div>
+          )}
+        </Tarjeta>
+      )}
+
+      {datos && (
+        <Tarjeta className="mb-6">
+          <h2 className="mb-3 font-semibold">Avisar por WhatsApp</h2>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Se abre el chat con el número registrado (+{datos.whatsapp}) y el mensaje ya escrito. Solo tenés que
+            enviarlo.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {detalle.estado === "ACTIVO" && (
+              <BotonWhatsapp
+                principal
+                whatsapp={datos.whatsapp}
+                etiqueta="Avisar que su perfil está activo"
+                mensaje={`Hola ${datos.nombre}, te escribimos de Servi Cerca. Tu registro fue aprobado y tu perfil ya está activo. Si más adelante querés modificar tus datos, pedilo respondiendo a este contacto.`}
+              />
+            )}
+            {detalle.estado === "RECHAZADO" && (
+              <BotonWhatsapp
+                principal
+                whatsapp={datos.whatsapp}
+                etiqueta="Avisar del rechazo"
+                mensaje={`Hola ${datos.nombre}, te escribimos de Servi Cerca. Revisamos tu solicitud y por ahora no pudimos aprobarla.${ultimoRechazo?.motivoRechazo ? ` Motivo: ${ultimoRechazo.motivoRechazo}` : ""}`}
+              />
+            )}
+            <BotonWhatsapp
+              whatsapp={datos.whatsapp}
+              etiqueta="Escribirle"
+              mensaje={`Hola ${datos.nombre}, te escribimos de Servi Cerca.`}
+            />
+          </div>
+        </Tarjeta>
+      )}
+
+      {datos ? (
+        <DatosVersion datos={datos} />
+      ) : (
+        <p className="text-muted-foreground">Este operador no tiene datos para mostrar.</p>
+      )}
+
+      {detalle.versiones.length > 1 && (
+        <Tarjeta className="mt-6">
+          <h2 className="mb-3 font-semibold">Historial</h2>
+          <ul className="space-y-2 text-sm">
+            {detalle.versiones.map((v) => (
+              <li key={v.versionId} className="flex flex-wrap gap-x-3 text-muted-foreground">
+                <span className="text-foreground">Versión {v.numeroVersion}</span>
+                <span>{v.estadoVersion.replace("_", " ").toLowerCase()}</span>
+                {v.publicada && <Badge variant="secondary">publicada</Badge>}
+                <span>{fecha(v.fechaRevision ?? v.fechaCreacion)}</span>
+                {v.motivoRechazo && <span>· Motivo: {v.motivoRechazo}</span>}
+              </li>
+            ))}
+          </ul>
+        </Tarjeta>
+      )}
+
+      <AlertDialog open={confirmando !== null} onOpenChange={(open) => !open && !procesando && setConfirmando(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmando === "suspender" ? "¿Suspender al operador?" : "¿Aprobar y publicar?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmando === "suspender"
+                ? "Su perfil deja de mostrarse en el sitio. Podés reactivarlo cuando quieras."
+                : "El perfil pasa a mostrarse en el sitio con estos datos. Después avisale por WhatsApp."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={procesando}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={procesando}
+              onClick={(e) => {
+                e.preventDefault();
+                if (confirmando === "suspender") {
+                  ejecutar(() => suspenderOperador(id), "El operador quedó suspendido.");
+                } else if (pendiente) {
+                  ejecutar(
+                    () => aprobarVersion(pendiente.versionSolicitada.versionId),
+                    "Aprobado. Avisale por WhatsApp que su perfil está activo.",
+                  );
+                }
+              }}
+            >
+              {procesando && <Spinner />} {confirmando === "suspender" ? "Suspender" : "Aprobar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={rechazando} onOpenChange={(open) => !open && !procesando && setRechazando(false)}>
+        <DialogContent>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (pendiente && motivo.trim()) {
+                ejecutar(() => rechazarVersion(pendiente.versionSolicitada.versionId, motivo.trim()), "Solicitud rechazada.");
+              }
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>Rechazar solicitud</DialogTitle>
+              <DialogDescription>
+                El motivo queda guardado y se incluye en el mensaje de WhatsApp para avisarle.
+              </DialogDescription>
+            </DialogHeader>
+            <Field className="my-6">
+              <FieldLabel htmlFor="motivo-rechazo">Motivo</FieldLabel>
+              <Textarea
+                id="motivo-rechazo"
+                required
+                maxLength={500}
+                rows={4}
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                placeholder="Ej. Faltan datos de contacto o las imágenes no corresponden al servicio."
+                disabled={procesando}
+                autoFocus
+              />
+            </Field>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setRechazando(false)} disabled={procesando}>
+                Cancelar
+              </Button>
+              <Button type="submit" variant="destructive" disabled={procesando || !motivo.trim()}>
+                {procesando && <Spinner />} Rechazar
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </section>
+  );
+}
+
+function DatosVersion({ datos }: { datos: VersionDetalle }) {
+  return (
+    <div className="space-y-6">
+      <Tarjeta>
+        <div className="flex flex-col gap-6 sm:flex-row">
+          <Imagen url={datos.fotoPerfilUrl} alt={`Foto de ${datos.nombre}`} className="size-24 rounded-full" />
+          <dl className="grid flex-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
+            <Dato etiqueta="Email" valor={datos.email} />
+            <Dato etiqueta="Teléfono" valor={datos.telefono} />
+            <Dato etiqueta="WhatsApp" valor={`+${datos.whatsapp}`} />
+            <Dato etiqueta="Localidades" valor={datos.localidades.map((l) => l.nombre).join(", ") || "—"} />
+            <div className="sm:col-span-2">
+              <Dato etiqueta="Descripción" valor={datos.descripcion || "—"} />
+            </div>
+          </dl>
+        </div>
+      </Tarjeta>
+
+      <Tarjeta>
+        <h2 className="mb-3 font-semibold">Trabajos que ofrece</h2>
+        <ul className="divide-y divide-border text-sm">
+          {datos.oficios.map((o) => (
+            <li key={o.oficioId} className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-2.5">
+              <div>
+                <span className="font-medium">{o.nombre}</span>
+                <span className="ml-2 text-muted-foreground">{o.categoria}</span>
+                {!o.activo && (
+                  <Badge variant="outline" className="ml-2 text-muted-foreground">
+                    inactivo
+                  </Badge>
+                )}
+                {o.descripcionServicio && <p className="mt-0.5 text-muted-foreground">{o.descripcionServicio}</p>}
+              </div>
+              <span className="tabular-nums">{o.precioDesde !== null ? `Desde ${precio(o.precioDesde, o.moneda)}` : "Sin precio"}</span>
+            </li>
+          ))}
+        </ul>
+      </Tarjeta>
+
+      <Tarjeta>
+        <h2 className="mb-3 font-semibold">Publicaciones</h2>
+        {datos.publicaciones.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No cargó publicaciones.</p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {datos.publicaciones.map((p) => (
+              <div key={p.id} className="overflow-hidden rounded-md border border-border">
+                <Imagen url={p.imagenUrl} alt={p.titulo} className="aspect-video w-full" />
+                <div className="p-3 text-sm">
+                  <p className="font-medium">{p.titulo}</p>
+                  <p className="text-muted-foreground">
+                    {TIPO_PUBLICACION[p.tipo]}
+                    {p.precio !== null && ` · ${precio(p.precio, p.moneda)}`}
+                  </p>
+                  {p.descripcion && <p className="mt-1 text-muted-foreground">{p.descripcion}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Tarjeta>
+    </div>
+  );
+}
+
+function Volver() {
+  return (
+    <Link href="/maite/operadores" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+      <ArrowLeft size={16} /> Operadores
+    </Link>
+  );
+}
+
+function Tarjeta({ className = "", children }: { className?: string; children: React.ReactNode }) {
+  return <div className={`rounded-(--radius) border border-border bg-card p-5 ${className}`}>{children}</div>;
+}
+
+function Dato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
+  return (
+    <div>
+      <dt className="text-muted-foreground">{etiqueta}</dt>
+      <dd className="mt-0.5 break-words whitespace-pre-line">{valor}</dd>
+    </div>
+  );
+}
+
+function Imagen({ url, alt, className }: { url: string | null; alt: string; className: string }) {
+  if (!url) {
+    return (
+      <div className={`grid shrink-0 place-items-center bg-secondary text-muted-foreground ${className}`} title="Sin imagen">
+        <ImageOff className="size-6" />
+      </div>
+    );
+  }
+  return (
+    <a href={url} target="_blank" rel="noreferrer" className={`block shrink-0 overflow-hidden bg-secondary ${className}`}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- URL firmada de S3 con vencimiento, no pasa por next/image */}
+      <img src={url} alt={alt} className="size-full object-cover" />
+    </a>
+  );
+}
+
+function BotonWhatsapp({
+  whatsapp,
+  mensaje,
+  etiqueta,
+  principal = false,
+}: {
+  whatsapp: string;
+  mensaje: string;
+  etiqueta: string;
+  principal?: boolean;
+}) {
+  return (
+    <Button asChild variant={principal ? "default" : "outline"}>
+      <a href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(mensaje)}`} target="_blank" rel="noreferrer">
+        <MessageCircle /> {etiqueta}
+      </a>
+    </Button>
+  );
+}
+
+function precio(valor: number, moneda: "UYU" | "USD" | null) {
+  return `${moneda === "USD" ? "US$" : "$U"} ${new Intl.NumberFormat("es-UY").format(valor)}`;
+}

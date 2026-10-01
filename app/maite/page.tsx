@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function AdminPage() {
-  redirect("/maite/tipos");
+  redirect("/maite/operadores");
 }

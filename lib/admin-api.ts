@@ -146,3 +146,121 @@ export const crearTrabajo = (datos: TrabajoDatos) => pedir<Trabajo>("POST", "/ap
 export const actualizarTrabajo = (id: number, datos: TrabajoDatos) =>
   pedir<Trabajo>("PUT", `/api/admin/trades/${id}`, datos);
 export const eliminarTrabajo = (id: number) => pedir<void>("DELETE", `/api/admin/trades/${id}`);
+
+// ---------- Operadores: listado, revisión y estado ----------
+
+export type EstadoOperador = "PENDIENTE_REVISION" | "ACTIVO" | "RECHAZADO" | "SUSPENDIDO";
+export type EstadoVersion = "BORRADOR" | "PENDIENTE_REVISION" | "APROBADA" | "RECHAZADA" | "ARCHIVADA";
+
+export type Pagina<T> = { content: T[]; page: number; size: number; totalElements: number; totalPages: number };
+
+export type VersionPendiente = {
+  versionId: number;
+  operadorId: number;
+  estadoOperador: EstadoOperador;
+  nombre: string;
+  apellido: string;
+  nombreComercial: string | null;
+  fechaEnvioRevision: string | null;
+  fechaCreacion: string;
+  esRegistroInicial: boolean;
+};
+
+export type OperadorResumen = {
+  id: number;
+  estado: EstadoOperador;
+  nombre: string;
+  apellido: string;
+  nombreComercial: string | null;
+  email: string;
+  whatsapp: string;
+  tieneVersionPendiente: boolean;
+  fechaCreacion: string;
+};
+
+export type OficioOfrecido = {
+  oficioId: number;
+  nombre: string;
+  categoria: string;
+  descripcionServicio: string | null;
+  precioDesde: number | null;
+  moneda: "UYU" | "USD" | null;
+  activo: boolean;
+};
+
+export type Publicacion = {
+  id: number;
+  titulo: string;
+  descripcion: string | null;
+  tipo: "TRABAJO_REALIZADO" | "PRODUCTO" | "SERVICIO_DESTACADO";
+  precio: number | null;
+  moneda: "UYU" | "USD" | null;
+  imagenUrl: string | null;
+};
+
+export type VersionDetalle = {
+  versionId: number;
+  operadorId: number;
+  numeroVersion: number;
+  estadoVersion: EstadoVersion;
+  nombre: string;
+  apellido: string;
+  nombreComercial: string | null;
+  descripcion: string | null;
+  email: string;
+  telefono: string;
+  whatsapp: string;
+  fotoPerfilUrl: string | null;
+  localidades: { id: number; nombre: string; departamento: string }[];
+  oficios: OficioOfrecido[];
+  publicaciones: Publicacion[];
+  fechaEnvioRevision: string | null;
+};
+
+export type VersionRevision = {
+  operadorId: number;
+  estadoOperador: EstadoOperador;
+  esRegistroInicial: boolean;
+  versionSolicitada: VersionDetalle;
+  versionPublicada: VersionDetalle | null;
+  diferencias: {
+    hayCambios: boolean;
+    camposModificados: { campo: string; anterior: string | null; nuevo: string | null }[];
+  } | null;
+};
+
+export type VersionResumen = {
+  versionId: number;
+  numeroVersion: number;
+  estadoVersion: EstadoVersion;
+  publicada: boolean;
+  fechaCreacion: string;
+  fechaRevision: string | null;
+  revisadoPor: string | null;
+  motivoRechazo: string | null;
+};
+
+export type OperadorDetalle = {
+  id: number;
+  estado: EstadoOperador;
+  fechaCreacion: string;
+  fechaActivacion: string | null;
+  versionPublicada: VersionDetalle | null;
+  versiones: VersionResumen[];
+  calificaciones: { promedio: number | null; cantidad: number };
+};
+
+export const listarVersionesPendientes = () =>
+  pedir<Pagina<VersionPendiente>>("GET", "/api/admin/operator-versions?estado=PENDIENTE_REVISION&size=100");
+export const listarOperadores = (estado: EstadoOperador | null, page: number) =>
+  pedir<Pagina<OperadorResumen>>("GET", `/api/admin/operators?size=20&page=${page}${estado ? `&estado=${estado}` : ""}`);
+export const obtenerOperador = (id: number) => pedir<OperadorDetalle>("GET", `/api/admin/operators/${id}`);
+export const obtenerRevision = (versionId: number) =>
+  pedir<VersionRevision>("GET", `/api/admin/operator-versions/${versionId}`);
+export const aprobarVersion = (versionId: number) =>
+  pedir<VersionRevision>("POST", `/api/admin/operator-versions/${versionId}/approve`);
+export const rechazarVersion = (versionId: number, motivo: string) =>
+  pedir<VersionRevision>("POST", `/api/admin/operator-versions/${versionId}/reject`, { motivo });
+export const suspenderOperador = (id: number) => pedir<OperadorDetalle>("POST", `/api/admin/operators/${id}/suspend`);
+export const reactivarOperador = (id: number) =>
+  pedir<OperadorDetalle>("POST", `/api/admin/operators/${id}/reactivate`);
