@@ -188,3 +188,23 @@ export type PaginaCalificaciones = { content: Calificacion[]; page: number; tota
 export const obtenerOperadorPublico = (id: number) => obtener<OperadorPublico>(`/api/public/operators/${id}`);
 export const listarCalificaciones = (id: number, page: number) =>
   obtener<PaginaCalificaciones>(`/api/public/operators/${id}/ratings?page=${page}&size=10`);
+
+/** Lo que envía el formulario para calificar. `sitioWeb` es el campo trampa: una persona lo deja vacío. */
+export type CalificacionNueva = {
+  puntaje: number;
+  comentario: string | null;
+  nombreCliente: string | null;
+  confirmaServicio: boolean;
+  sitioWeb: string;
+};
+
+/** Queda pendiente de revisión. Lanza 409 CALIFICACION_DUPLICADA si ya calificó a este operador hace poco. */
+export async function calificarOperador(id: number, datos: CalificacionNueva): Promise<{ mensaje: string }> {
+  const respuesta = await fetch(`/api/public/operators/${id}/ratings`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(datos),
+  });
+  if (!respuesta.ok) throw await aError(respuesta);
+  return (await respuesta.json()) as { mensaje: string };
+}

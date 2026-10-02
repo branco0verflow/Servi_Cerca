@@ -284,7 +284,7 @@ export function TrabajosSection({ tipoInicial }: { tipoInicial: number | null })
         nombre={eliminando?.nombre ?? ""}
         bloqueo={
           eliminando?.enUso
-            ? "Está asociado a operadores o a trabajos registrados, y se conserva para no perder ese historial."
+            ? "Lo ofrece algún operador (o lo ofreció en una versión anterior de su perfil), y se conserva para no perder ese historial."
             : null
         }
         activo={eliminando?.activo ?? false}

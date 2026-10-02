@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Layers, LogOut, Users, Wrench } from "lucide-react";
+import { Layers, LogOut, Star, Users, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ export const ADMIN_LOGIN_PATH = "/login/maite";
 
 const SECCIONES = [
   { href: "/maite/operadores", etiqueta: "Operadores", icono: Users },
+  { href: "/maite/calificaciones", etiqueta: "Calificaciones", icono: Star },
   { href: "/maite/tipos", etiqueta: "Tipos", icono: Layers },
   { href: "/maite/trabajos", etiqueta: "Trabajos", icono: Wrench },
 ];

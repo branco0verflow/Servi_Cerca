@@ -284,3 +284,30 @@ export type Diferencias = {
   publicacionesModificadas: { nueva: { titulo: string } }[];
   publicacionesEliminadas: { titulo: string }[];
 };
+
+// ---------- Calificaciones: moderación ----------
+
+export type EstadoCalificacion = "PENDIENTE_REVISION" | "APROBADA" | "RECHAZADA";
+
+export type CalificacionAdmin = {
+  id: number;
+  operadorId: number;
+  operadorNombre: string | null;
+  puntaje: number;
+  comentario: string | null;
+  nombreCliente: string | null;
+  estado: EstadoCalificacion;
+  origen: "FORMULARIO_PUBLICO" | "ADMIN";
+  fechaCreacion: string;
+  fechaRevision: string | null;
+  revisadoPor: string | null;
+  motivoRechazo: string | null;
+  /** Otras calificaciones enviadas desde la misma IP (a cualquier operador): posible envío repetido. */
+  otrasDesdeMismoOrigen: number;
+};
+
+export const listarCalificacionesAdmin = (estado: EstadoCalificacion | null, page: number) =>
+  pedir<Pagina<CalificacionAdmin>>("GET", `/api/admin/ratings?size=20&page=${page}${estado ? `&estado=${estado}` : ""}`);
+export const aprobarCalificacion = (id: number) => pedir<CalificacionAdmin>("POST", `/api/admin/ratings/${id}/approve`);
+export const rechazarCalificacion = (id: number, motivo: string | null) =>
+  pedir<CalificacionAdmin>("POST", `/api/admin/ratings/${id}/reject`, { motivo });

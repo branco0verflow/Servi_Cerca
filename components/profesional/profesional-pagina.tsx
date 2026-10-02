@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ImageOff, MapPin, MessageCircle, Phone, ShieldCheck, Star } from "lucide-react";
 
+import { CalificarOperador } from "@/components/profesional/calificar-operador";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -172,8 +173,14 @@ export function ProfesionalPagina({ id, servicio, localidad }: Props) {
             )}
 
             <Seccion titulo="Calificaciones">
+              <div className="mb-5">
+                <CalificarOperador operadorId={operador.id} nombre={operador.nombre} />
+              </div>
               {calificaciones.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Todavía no tiene calificaciones.</p>
+                <p className="text-sm text-muted-foreground">
+                  Todavía no tiene calificaciones. Si contrataste sus servicios, podés ser la primera persona en
+                  calificarlo.
+                </p>
               ) : (
                 <>
                   <ul className="divide-y divide-border">
