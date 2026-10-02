@@ -58,6 +58,21 @@ type WebMcpContext = {
   ) => void | Promise<void>;
 };
 
+const BUSQUEDA_KEY = "servi-cerca-busqueda";
+
+function leerBusquedaGuardada(): { localidadId: number | null; servicio: string } | null {
+  try {
+    const guardada = JSON.parse(window.sessionStorage.getItem(BUSQUEDA_KEY) ?? "null");
+    if (!guardada || typeof guardada.servicio !== "string") return null;
+    return {
+      localidadId: typeof guardada.localidadId === "number" ? guardada.localidadId : null,
+      servicio: guardada.servicio,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /** Para comparar nombres sin distinguir mayúsculas ni tildes. */
 function normalizar(texto: string) {
   return texto
@@ -193,6 +208,8 @@ export default function Home() {
   const [busqueda, setBusqueda] = useState<Busqueda | null>(null);
   const heroRef = useRef<HTMLElement>(null);
   const resultsRef = useRef<HTMLElement>(null);
+  // Desplazamiento a los resultados que falta completar cuando terminen de cargar.
+  const scrollPendiente = useRef<ScrollBehavior | null>(null);
 
   const services = useMemo(
     () => (oficios ?? []).map((oficio) => oficio.nombre).sort((a, b) => a.localeCompare(b, "es")),
@@ -216,13 +233,31 @@ export default function Home() {
   const location = localidad?.nombre ?? "";
 
   useEffect(() => {
-    listarLocalidades()
-      .then(setLocalidades)
-      .catch(() => setLocalidades([]));
-    listarOficios()
-      .then(setOficios)
-      .catch(() => setOficios([]));
+    Promise.all([listarLocalidades().catch(() => []), listarOficios().catch(() => [])]).then(
+      ([listaLocalidades, listaOficios]) => {
+        setLocalidades(listaLocalidades);
+        setOficios(listaOficios);
+
+        // Al volver de la ficha de un profesional se retoma la última búsqueda y se vuelve a los resultados.
+        const guardada = leerBusquedaGuardada();
+        if (!guardada?.servicio) return;
+        if (guardada.localidadId !== null) setLocalidadElegida(guardada.localidadId);
+        setSelectedService(guardada.servicio);
+        scrollPendiente.current = "instant";
+        window.setTimeout(() => resultsRef.current?.scrollIntoView({ block: "start" }), 50);
+      },
+    );
   }, []);
+
+  // Se guarda solo en esta pestaña (sessionStorage): al cerrar el navegador la búsqueda no queda.
+  useEffect(() => {
+    if (oficios === null) return;
+    try {
+      window.sessionStorage.setItem(BUSQUEDA_KEY, JSON.stringify({ localidadId, servicio: selectedService }));
+    } catch {
+      // Sin acceso al almacenamiento: la búsqueda simplemente no se recuerda.
+    }
+  }, [oficios, localidadId, selectedService]);
 
   useEffect(() => {
     if (localidadId === null || oficioId === null) return;
@@ -326,6 +361,11 @@ export default function Home() {
       { y: 20, opacity: 0 },
       { y: 0, opacity: 1, duration: 0.55, stagger: 0.08, ease: "power3.out" },
     );
+    // Cuando llegan las tarjetas la página crece: se repite el desplazamiento para quedar justo en los resultados.
+    if (scrollPendiente.current) {
+      resultsRef.current.scrollIntoView({ behavior: scrollPendiente.current, block: "start" });
+      scrollPendiente.current = null;
+    }
   }, [resultado]);
 
   function toggleTheme() {
@@ -335,15 +375,24 @@ export default function Home() {
     window.localStorage.setItem("servi-cerca-theme", nextTheme);
   }
 
+  // Los resultados quedan debajo del buscador: al elegir se lleva al usuario hasta ellos.
+  function irAResultados() {
+    // Espera a que el buscador se cierre; en el celular además oculta el teclado, que si no tapa los resultados.
+    scrollPendiente.current = "smooth";
+    window.setTimeout(() => {
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+  }
+
   function selectSuggestedService(service: string) {
     setSelectedService(service);
+    if (service) irAResultados();
+  }
 
-    window.requestAnimationFrame(() => {
-      resultsRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    });
+  function selectLocation(id: number) {
+    setLocalidadElegida(id);
+    if (selectedService) irAResultados();
   }
 
   return (
@@ -398,7 +447,7 @@ export default function Home() {
                 <select
                   id="location"
                   value={localidad?.id ?? ""}
-                  onChange={(event) => setLocalidadElegida(Number(event.target.value))}
+                  onChange={(event) => selectLocation(Number(event.target.value))}
                   disabled={localidades.length === 0}
                 >
                   {localidades.map((item) => (
@@ -420,7 +469,7 @@ export default function Home() {
               <Combobox
                 items={services}
                 value={selectedService}
-                onValueChange={(value) => setSelectedService(value ?? "")}
+                onValueChange={(value) => selectSuggestedService(value ?? "")}
               >
                 <ComboboxInput
                   className="service-combobox"

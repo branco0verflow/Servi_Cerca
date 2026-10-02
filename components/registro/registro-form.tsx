@@ -346,9 +346,9 @@ export function OperadorFormulario({ inicial, avisoTitulo, avisoTexto, textoBoto
           {localidades === null ? (
             <Skeleton className="h-24 w-full" />
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-1 sm:grid-cols-2 sm:gap-3">
               {localidades.map((localidad) => (
-                <label key={localidad.id} className="flex cursor-pointer items-center gap-3 text-sm">
+                <label key={localidad.id} className="flex min-h-11 cursor-pointer items-center gap-3 text-sm sm:min-h-0">
                   <Checkbox
                     checked={localidadIds.includes(localidad.id)}
                     onCheckedChange={(marcada) => alternarLocalidad(localidad.id, marcada === true)}
@@ -374,13 +374,13 @@ export function OperadorFormulario({ inicial, avisoTitulo, avisoTexto, textoBoto
             grupos.map(([tipo, lista]) => (
               <fieldset key={tipo}>
                 <legend className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{tipo}</legend>
-                <div className="space-y-3">
+                <div className="space-y-1 sm:space-y-3">
                   {lista.map((oficio) => {
                     const datos = elegidos[oficio.id];
                     const bloqueado = !datos && cantidadElegidos >= MAX_OFICIOS;
                     return (
                       <div key={oficio.id} className={datos ? "rounded-md border border-border bg-secondary/40 p-4" : undefined}>
-                        <label className="flex cursor-pointer items-center gap-3 text-sm font-medium">
+                        <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium sm:min-h-0">
                           <Checkbox
                             checked={!!datos}
                             onCheckedChange={(marcado) => alternarOficio(oficio.id, marcado === true)}
@@ -665,7 +665,7 @@ function CampoTexto({
   return (
     <Field data-invalid={error ? true : undefined}>
       <FieldLabel htmlFor={id}>{etiqueta}</FieldLabel>
-      <Input id={id} type={tipo} value={valor} onChange={(e) => onCambio(e.target.value)} aria-invalid={error ? true : undefined} {...props} />
+      <Input id={id} type={tipo} className="h-11 sm:h-9" value={valor} onChange={(e) => onCambio(e.target.value)} aria-invalid={error ? true : undefined} {...props} />
       {error ? <FieldError>{error}</FieldError> : ayuda && <FieldDescription>{ayuda}</FieldDescription>}
     </Field>
   );
@@ -694,11 +694,11 @@ function CampoPrecio({
     <Field>
       <FieldLabel htmlFor={id}>{etiqueta}</FieldLabel>
       <div className="flex gap-2">
-        <NativeSelect aria-label="Moneda" className="py-0" value={moneda} onChange={(e) => onMoneda(e.target.value as Moneda)} disabled={disabled}>
+        <NativeSelect aria-label="Moneda" className="h-11 py-0 sm:h-9" value={moneda} onChange={(e) => onMoneda(e.target.value as Moneda)} disabled={disabled}>
           <NativeSelectOption value="UYU">$U</NativeSelectOption>
           <NativeSelectOption value="USD">US$</NativeSelectOption>
         </NativeSelect>
-        <Input id={id} inputMode="decimal" className="w-32" value={precio} onChange={(e) => onPrecio(e.target.value)} placeholder="1500" aria-invalid={error ? true : undefined} disabled={disabled} />
+        <Input id={id} inputMode="decimal" className="h-11 w-32 sm:h-9" value={precio} onChange={(e) => onPrecio(e.target.value)} placeholder="1500" aria-invalid={error ? true : undefined} disabled={disabled} />
       </div>
       {error && <FieldError>{error}</FieldError>}
     </Field>

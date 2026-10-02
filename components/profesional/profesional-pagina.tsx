@@ -96,7 +96,7 @@ export function ProfesionalPagina({ id, servicio, localidad }: Props) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-4 py-8 sm:py-10">
+      <main className="mx-auto max-w-4xl px-4 pt-8 pb-28 sm:py-10">
         {estado === "cargando" && (
           <div className="space-y-6" aria-busy="true" aria-label="Cargando">
             <Skeleton className="h-48 w-full" />
@@ -293,7 +293,7 @@ function Encabezado({
 
           <div className="mt-6 flex flex-wrap gap-3">
             <a
-              className="contact-button px-5"
+              className="contact-button w-full px-5 sm:w-auto"
               href={`https://wa.me/${operador.whatsapp}?text=${mensaje}`}
               target="_blank"
               rel="noreferrer"
@@ -301,13 +301,26 @@ function Encabezado({
               <MessageCircle className="size-4" />
               Contactar por WhatsApp
             </a>
-            <Button asChild variant="outline" className="h-11 rounded-xl">
+            <Button asChild variant="outline" className="h-11 w-full rounded-xl sm:w-auto">
               <a href={`tel:${operador.telefono.replace(/[^\d+]/g, "")}`}>
                 <Phone /> {operador.telefono}
               </a>
             </Button>
           </div>
         </div>
+      </div>
+
+      {/* En el celular el botón de contacto queda siempre a mano, aunque se baje a ver publicaciones o reseñas. */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:hidden">
+        <a
+          className="contact-button w-full"
+          href={`https://wa.me/${operador.whatsapp}?text=${mensaje}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <MessageCircle className="size-4" />
+          Contactar a {operador.nombre} por WhatsApp
+        </a>
       </div>
     </section>
   );
