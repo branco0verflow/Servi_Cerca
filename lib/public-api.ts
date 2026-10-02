@@ -135,3 +135,56 @@ export type ResultadoBusqueda = { content: OperadorResumen[]; totalElements: num
 /** Operadores aprobados que ofrecen ese trabajo en esa localidad, mejor calificados primero. */
 export const buscarOperadores = (localidadId: number, oficioId: number) =>
   obtener<ResultadoBusqueda>(`/api/public/operators/search?locationId=${localidadId}&tradeId=${oficioId}&size=24`);
+
+// ---------- Ficha pública de un operador ----------
+
+export type OficioPublico = {
+  oficioId: number;
+  nombre: string;
+  categoria: string;
+  descripcionServicio: string | null;
+  precioDesde: number | null;
+  moneda: Moneda | null;
+};
+
+export type PublicacionPublica = {
+  id: number;
+  titulo: string;
+  descripcion: string | null;
+  tipo: TipoPublicacion;
+  precio: number | null;
+  moneda: Moneda | null;
+  imagenUrl: string | null;
+};
+
+export type OperadorPublico = {
+  id: number;
+  nombre: string;
+  apellido: string;
+  nombreComercial: string | null;
+  descripcion: string | null;
+  fotoPerfilUrl: string | null;
+  telefono: string;
+  whatsapp: string;
+  oficios: OficioPublico[];
+  localidades: Localidad[];
+  publicaciones: PublicacionPublica[];
+  calificacionPromedio: number | null;
+  cantidadCalificaciones: number;
+  activoDesde: string | null;
+};
+
+export type Calificacion = {
+  id: number;
+  puntaje: number;
+  comentario: string | null;
+  nombreCliente: string | null;
+  fecha: string;
+};
+
+export type PaginaCalificaciones = { content: Calificacion[]; page: number; totalPages: number; totalElements: number };
+
+/** Lanza PublicApiError con status 404 si el operador no existe o no está activo. */
+export const obtenerOperadorPublico = (id: number) => obtener<OperadorPublico>(`/api/public/operators/${id}`);
+export const listarCalificaciones = (id: number, page: number) =>
+  obtener<PaginaCalificaciones>(`/api/public/operators/${id}/ratings?page=${page}&size=10`);

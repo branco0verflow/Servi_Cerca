@@ -17,6 +17,7 @@ import {
   Moneda,
   Oficio,
   PublicApiError,
+  PublicacionDatos,
   RegistroDatos,
   RegistroRespuesta,
   TipoPublicacion,
@@ -44,6 +45,9 @@ type OficioElegido = { descripcionServicio: string; precioDesde: string; moneda:
 
 type PublicacionBorrador = {
   clave: number;
+  /** Id en el servidor si la publicación ya existe (edición); las nuevas no tienen. */
+  id?: number;
+  imagenUrl?: string | null;
   titulo: string;
   tipo: TipoPublicacion;
   descripcion: string;
@@ -54,28 +58,92 @@ type PublicacionBorrador = {
 
 type Errores = Record<string, string>;
 
-export function RegistroForm() {
+/** Datos ya guardados de un operador, para precargar el formulario al editar. */
+export type ValoresIniciales = {
+  nombre: string;
+  apellido: string;
+  nombreComercial: string | null;
+  descripcion: string | null;
+  email: string;
+  telefono: string;
+  whatsapp: string;
+  localidadIds: number[];
+  oficios: { oficioId: number; descripcionServicio: string | null; precioDesde: number | null; moneda: Moneda | null }[];
+  fotoPerfilUrl: string | null;
+  publicaciones: (PublicacionDatos & { id: number; imagenUrl: string | null })[];
+};
+
+/** Lo que el formulario entrega al enviar. Las imágenes son archivos locales: todavía no se subieron. */
+export type ValoresFormulario = {
+  datos: Omit<RegistroDatos, "publicaciones">;
+  fotoPerfil: File | null;
+  /** El operador quitó la foto que tenía (solo en edición). */
+  fotoQuitada: boolean;
+  /** Publicaciones en pantalla: con `id` las que ya existían, sin `id` las nuevas (siempre con imagen). */
+  publicaciones: { id?: number; datos: PublicacionDatos; imagen: File | null }[];
+  /** Ids de publicaciones existentes que el operador quitó (solo en edición). */
+  publicacionesQuitadas: number[];
+};
+
+type Props = {
+  inicial?: ValoresIniciales;
+  avisoTitulo: string;
+  avisoTexto: string;
+  textoBoton: string;
+  /** Envía los datos. Si lanza PublicApiError, el formulario muestra su mensaje. */
+  enviar: (valores: ValoresFormulario) => Promise<void>;
+};
+
+function publicacionesIniciales(inicial?: ValoresIniciales): PublicacionBorrador[] {
+  return (inicial?.publicaciones ?? []).map((p, indice) => ({
+    clave: indice + 1,
+    id: p.id,
+    imagenUrl: p.imagenUrl,
+    titulo: p.titulo,
+    tipo: p.tipo,
+    descripcion: p.descripcion ?? "",
+    precio: p.precio !== null ? String(p.precio) : "",
+    moneda: p.moneda ?? "UYU",
+    imagen: null,
+  }));
+}
+
+function oficiosIniciales(inicial?: ValoresIniciales): Record<number, OficioElegido> {
+  return Object.fromEntries(
+    (inicial?.oficios ?? []).map((o) => [
+      o.oficioId,
+      {
+        descripcionServicio: o.descripcionServicio ?? "",
+        precioDesde: o.precioDesde !== null ? String(o.precioDesde) : "",
+        moneda: o.moneda ?? "UYU",
+      },
+    ]),
+  );
+}
+
+export function OperadorFormulario({ inicial, avisoTitulo, avisoTexto, textoBoton, enviar }: Props) {
   const [localidades, setLocalidades] = useState<Localidad[] | null>(null);
   const [oficios, setOficios] = useState<Oficio[] | null>(null);
   const [errorCarga, setErrorCarga] = useState(false);
 
-  const [nombre, setNombre] = useState("");
-  const [apellido, setApellido] = useState("");
-  const [nombreComercial, setNombreComercial] = useState("");
-  const [email, setEmail] = useState("");
-  const [telefono, setTelefono] = useState("");
-  const [whatsapp, setWhatsapp] = useState("");
-  const [descripcion, setDescripcion] = useState("");
-  const [localidadIds, setLocalidadIds] = useState<number[]>([]);
-  const [elegidos, setElegidos] = useState<Record<number, OficioElegido>>({});
+  const [nombre, setNombre] = useState(inicial?.nombre ?? "");
+  const [apellido, setApellido] = useState(inicial?.apellido ?? "");
+  const [nombreComercial, setNombreComercial] = useState(inicial?.nombreComercial ?? "");
+  const [email, setEmail] = useState(inicial?.email ?? "");
+  const [telefono, setTelefono] = useState(inicial?.telefono ?? "");
+  const [whatsapp, setWhatsapp] = useState(inicial?.whatsapp ?? "");
+  const [descripcion, setDescripcion] = useState(inicial?.descripcion ?? "");
+  const [localidadIds, setLocalidadIds] = useState<number[]>(inicial?.localidadIds ?? []);
+  const [elegidos, setElegidos] = useState<Record<number, OficioElegido>>(() => oficiosIniciales(inicial));
   const [fotoPerfil, setFotoPerfil] = useState<File | null>(null);
-  const [publicaciones, setPublicaciones] = useState<PublicacionBorrador[]>([]);
-  const siguienteClave = useRef(1);
+  const [fotoQuitada, setFotoQuitada] = useState(false);
+  const [publicaciones, setPublicaciones] = useState<PublicacionBorrador[]>(() => publicacionesIniciales(inicial));
+  const [publicacionesQuitadas, setPublicacionesQuitadas] = useState<number[]>([]);
+  const siguienteClave = useRef((inicial?.publicaciones.length ?? 0) + 1);
 
   const [errores, setErrores] = useState<Errores>({});
   const [errorGeneral, setErrorGeneral] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
-  const [resultado, setResultado] = useState<RegistroRespuesta | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -157,8 +225,10 @@ export function RegistroForm() {
     }
     for (const p of publicaciones) {
       if (!p.titulo.trim()) e[`publicacion-${p.clave}-titulo`] = "Poné un título.";
-      if (!p.imagen) e[`publicacion-${p.clave}-imagen`] = "Cada publicación necesita una imagen.";
-      else {
+      // Las publicaciones que ya existen conservan su imagen si no se elige otra.
+      if (!p.imagen) {
+        if (p.id === undefined) e[`publicacion-${p.clave}-imagen`] = "Cada publicación necesita una imagen.";
+      } else {
         const problema = problemaImagen(p.imagen);
         if (problema) e[`publicacion-${p.clave}-imagen`] = problema;
       }
@@ -183,7 +253,7 @@ export function RegistroForm() {
       return;
     }
 
-    const datos: RegistroDatos = {
+    const datos: ValoresFormulario["datos"] = {
       nombre: nombre.trim(),
       apellido: apellido.trim(),
       nombreComercial: nombreComercial.trim() || null,
@@ -201,26 +271,30 @@ export function RegistroForm() {
           moneda: precio === null ? null : o.moneda,
         };
       }),
-      publicaciones: publicaciones.map((p) => {
-        const precio = aNumero(p.precio);
-        return {
-          titulo: p.titulo.trim(),
-          descripcion: p.descripcion.trim() || null,
-          tipo: p.tipo,
-          precio,
-          moneda: precio === null ? null : p.moneda,
-        };
-      }),
     };
 
     setEnviando(true);
     try {
-      const respuesta = await registrarOperador(
+      await enviar({
         datos,
         fotoPerfil,
-        publicaciones.map((p) => p.imagen as File),
-      );
-      setResultado(respuesta);
+        fotoQuitada: fotoQuitada && !fotoPerfil,
+        publicaciones: publicaciones.map((p) => {
+          const precio = aNumero(p.precio);
+          return {
+            id: p.id,
+            datos: {
+              titulo: p.titulo.trim(),
+              descripcion: p.descripcion.trim() || null,
+              tipo: p.tipo,
+              precio,
+              moneda: precio === null ? null : p.moneda,
+            },
+            imagen: p.imagen,
+          };
+        }),
+        publicacionesQuitadas,
+      });
       window.scrollTo({ top: 0 });
     } catch (e) {
       if (e instanceof PublicApiError) {
@@ -232,10 +306,6 @@ export function RegistroForm() {
     } finally {
       setEnviando(false);
     }
-  }
-
-  if (resultado) {
-    return <RegistroEnviado resultado={resultado} whatsapp={whatsapp.trim()} />;
   }
 
   if (errorCarga) {
@@ -359,7 +429,12 @@ export function RegistroForm() {
           <SelectorImagen
             id="fotoPerfil"
             archivo={fotoPerfil}
-            onCambio={setFotoPerfil}
+            urlActual={fotoQuitada ? null : (inicial?.fotoPerfilUrl ?? null)}
+            onCambio={(archivo) => {
+              setFotoPerfil(archivo);
+              // "Quitar" sin archivo nuevo descarta también la foto que ya tenía.
+              if (!archivo) setFotoQuitada(true);
+            }}
             redonda
             etiqueta="Elegir foto"
             disabled={enviando}
@@ -381,7 +456,10 @@ export function RegistroForm() {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => setPublicaciones((actual) => actual.filter((x) => x.clave !== p.clave))}
+                  onClick={() => {
+                    setPublicaciones((actual) => actual.filter((x) => x.clave !== p.clave));
+                    if (p.id !== undefined) setPublicacionesQuitadas((actual) => [...actual, p.id as number]);
+                  }}
                   disabled={enviando}
                 >
                   <Trash2 /> Quitar
@@ -443,6 +521,8 @@ export function RegistroForm() {
                   <SelectorImagen
                     id={`publicacion-${p.clave}-imagen`}
                     archivo={p.imagen}
+                    urlActual={p.imagenUrl ?? null}
+                    conservaActual
                     onCambio={(imagen) => editarPublicacion(p.clave, { imagen })}
                     etiqueta="Elegir imagen"
                     disabled={enviando}
@@ -466,11 +546,8 @@ export function RegistroForm() {
         <div className="flex gap-3 text-sm">
           <Clock3 className="mt-0.5 size-5 shrink-0 text-primary" />
           <div>
-            <p className="font-medium">La revisión puede tardar hasta 24 horas.</p>
-            <p className="mt-1 text-muted-foreground">
-              Tus fotos e imágenes se suben recién cuando enviás el formulario. Revisamos la información antes de
-              publicar tu perfil y te avisamos por WhatsApp.
-            </p>
+            <p className="font-medium">{avisoTitulo}</p>
+            <p className="mt-1 text-muted-foreground">{avisoTexto}</p>
           </div>
         </div>
 
@@ -488,12 +565,37 @@ export function RegistroForm() {
             </>
           ) : (
             <>
-              Enviar formulario a revisión <ArrowRight />
+              {textoBoton} <ArrowRight />
             </>
           )}
         </Button>
       </div>
     </form>
+  );
+}
+
+/** Registro público: un solo envío con todos los datos e imágenes. */
+export function RegistroForm() {
+  const [enviado, setEnviado] = useState<{ resultado: RegistroRespuesta; whatsapp: string } | null>(null);
+
+  if (enviado) {
+    return <RegistroEnviado resultado={enviado.resultado} whatsapp={enviado.whatsapp} />;
+  }
+
+  return (
+    <OperadorFormulario
+      avisoTitulo="La revisión puede tardar hasta 24 horas."
+      avisoTexto="Tus fotos e imágenes se suben recién cuando enviás el formulario. Revisamos la información antes de publicar tu perfil y te avisamos por WhatsApp."
+      textoBoton="Enviar formulario a revisión"
+      enviar={async (valores) => {
+        const resultado = await registrarOperador(
+          { ...valores.datos, publicaciones: valores.publicaciones.map((p) => p.datos) },
+          valores.fotoPerfil,
+          valores.publicaciones.map((p) => p.imagen as File),
+        );
+        setEnviado({ resultado, whatsapp: valores.datos.whatsapp });
+      }}
+    />
   );
 }
 
@@ -609,6 +711,8 @@ function SelectorImagen({
   archivo,
   onCambio,
   etiqueta,
+  urlActual: urlGuardada = null,
+  conservaActual = false,
   redonda = false,
   disabled,
 }: {
@@ -616,6 +720,10 @@ function SelectorImagen({
   archivo: File | null;
   onCambio: (archivo: File | null) => void;
   etiqueta: string;
+  /** Imagen ya guardada en el servidor (edición): se muestra mientras no se elija otra. */
+  urlActual?: string | null;
+  /** La imagen guardada no se puede quitar, solo reemplazar (publicaciones). */
+  conservaActual?: boolean;
   redonda?: boolean;
   disabled: boolean;
 }) {
@@ -643,9 +751,9 @@ function SelectorImagen({
       <div
         className={`grid size-20 shrink-0 place-items-center overflow-hidden border border-border bg-secondary text-muted-foreground ${redonda ? "rounded-full" : "rounded-md"}`}
       >
-        {vistaPrevia ? (
-          // eslint-disable-next-line @next/next/no-img-element -- vista previa local (blob:), no pasa por next/image
-          <img src={vistaPrevia} alt="Vista previa" className="size-full object-cover" />
+        {(vistaPrevia ?? urlGuardada) ? (
+          // eslint-disable-next-line @next/next/no-img-element -- vista previa local (blob:) o URL firmada, no pasa por next/image
+          <img src={(vistaPrevia ?? urlGuardada) as string} alt="Vista previa" className="size-full object-cover" />
         ) : (
           <ImagePlus className="size-6" />
         )}
@@ -665,9 +773,9 @@ function SelectorImagen({
         />
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()} disabled={disabled}>
-            {archivo ? "Cambiar" : etiqueta}
+            {archivo || urlGuardada ? "Cambiar" : etiqueta}
           </Button>
-          {archivo && (
+          {(archivo || (urlGuardada && !conservaActual)) && (
             <Button type="button" variant="ghost" size="sm" onClick={() => elegir(null)} disabled={disabled}>
               <X /> Quitar
             </Button>

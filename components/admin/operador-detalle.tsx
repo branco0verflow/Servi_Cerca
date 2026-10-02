@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, ImageOff, MessageCircle, Star, X } from "lucide-react";
+import { ArrowLeft, Check, Copy, ImageOff, Link2, MessageCircle, Star, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAdminError } from "@/components/admin/admin-shell";
@@ -28,21 +28,37 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AdminApiError,
+  Diferencias,
+  EnlaceEdicion,
   OperadorDetalle,
   VersionDetalle,
   VersionRevision,
   aprobarVersion,
   obtenerOperador,
   obtenerRevision,
+  generarEnlaceEdicion,
   reactivarOperador,
   rechazarVersion,
   suspenderOperador,
 } from "@/lib/admin-api";
+
+// Nombres legibles de los campos que informa el backend al comparar versiones.
+const ETIQUETAS_CAMPO: Record<string, string> = {
+  nombre: "Nombre",
+  apellido: "Apellido",
+  nombreComercial: "Nombre comercial",
+  descripcion: "Descripción",
+  email: "Email",
+  telefono: "Teléfono",
+  whatsapp: "WhatsApp",
+  fotoPerfil: "Foto de perfil",
+};
 
 const TIPO_PUBLICACION = {
   TRABAJO_REALIZADO: "Trabajo realizado",
@@ -129,7 +145,13 @@ export function OperadorDetalleSection({ id }: { id: number }) {
 
   const pendiente = revision?.versionSolicitada.estadoVersion === "PENDIENTE_REVISION" ? revision : null;
   const datos: VersionDetalle | null = revision?.versionSolicitada ?? detalle.versionPublicada;
-  const ultimoRechazo = detalle.versiones.find((v) => v.estadoVersion === "RECHAZADA" && v.motivoRechazo);
+  // Los avisos van siempre al número ya aprobado, no al que figure en cambios todavía sin revisar.
+  const contacto = detalle.versionPublicada ?? datos;
+  const porNumero = [...detalle.versiones].sort((a, b) => b.numeroVersion - a.numeroVersion);
+  const ultimaVersion = porNumero[0];
+  const ultimoRechazo = porNumero.find((v) => v.estadoVersion === "RECHAZADA" && v.motivoRechazo);
+  const cambiosRechazados = ultimaVersion?.estadoVersion === "RECHAZADA" && ultimaVersion.numeroVersion > 1;
+  const cambiosAprobados = !cambiosRechazados && (detalle.versionPublicada?.numeroVersion ?? 1) > 1;
 
   return (
     <section>
@@ -138,10 +160,10 @@ export function OperadorDetalleSection({ id }: { id: number }) {
       <div className="mt-4 mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-semibold">{datos ? `${datos.nombre} ${datos.apellido}` : `Operador ${id}`}</h1>
+            <h1 className="text-2xl font-semibold">{contacto ? `${contacto.nombre} ${contacto.apellido}` : `Operador ${id}`}</h1>
             <EstadoOperadorBadge estado={detalle.estado} />
           </div>
-          {datos?.nombreComercial && <p className="mt-1 text-muted-foreground">{datos.nombreComercial}</p>}
+          {contacto?.nombreComercial && <p className="mt-1 text-muted-foreground">{contacto.nombreComercial}</p>}
           <p className="mt-1 text-sm text-muted-foreground">
             Registrado el {fecha(detalle.fechaCreacion)}
             {detalle.fechaActivacion && ` · Activo desde el ${fecha(detalle.fechaActivacion)}`}
@@ -178,6 +200,8 @@ export function OperadorDetalleSection({ id }: { id: number }) {
               <p className="mt-1 text-sm text-muted-foreground">
                 Enviado el {fecha(pendiente.versionSolicitada.fechaEnvioRevision)}: revisá los datos de abajo antes de
                 decidir.
+                {!pendiente.esRegistroInicial &&
+                  " Mientras tanto el sitio sigue mostrando su perfil aprobado; si aprobás, se reemplaza por estos datos."}
               </p>
             </div>
             <div className="flex gap-2">
@@ -191,58 +215,68 @@ export function OperadorDetalleSection({ id }: { id: number }) {
           </div>
           {!pendiente.esRegistroInicial && pendiente.diferencias && (
             <div className="mt-4 border-t border-border pt-4 text-sm">
-              {pendiente.diferencias.camposModificados.length > 0 ? (
-                <>
-                  <p className="mb-2 font-medium">Datos que cambian:</p>
-                  <ul className="space-y-1 text-muted-foreground">
-                    {pendiente.diferencias.camposModificados.map((c) => (
-                      <li key={c.campo}>
-                        <span className="text-foreground">{c.campo}:</span> {c.anterior || "—"} → {c.nuevo || "—"}
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : (
-                <p className="text-muted-foreground">
-                  Los cambios están en trabajos, localidades o publicaciones: compará con el perfil publicado.
-                </p>
-              )}
+              <Cambios diferencias={pendiente.diferencias} />
             </div>
           )}
         </Tarjeta>
       )}
 
-      {datos && (
+      {contacto && (
         <Tarjeta className="mb-6">
           <h2 className="mb-3 font-semibold">Avisar por WhatsApp</h2>
           <p className="mb-4 text-sm text-muted-foreground">
-            Se abre el chat con el número registrado (+{datos.whatsapp}) y el mensaje ya escrito. Solo tenés que
+            Se abre el chat con el número registrado (+{contacto.whatsapp}) y el mensaje ya escrito. Solo tenés que
             enviarlo.
           </p>
           <div className="flex flex-wrap gap-2">
-            {detalle.estado === "ACTIVO" && (
+            {detalle.estado === "ACTIVO" && !pendiente && cambiosRechazados && (
               <BotonWhatsapp
                 principal
-                whatsapp={datos.whatsapp}
+                whatsapp={contacto.whatsapp}
+                etiqueta="Avisar que sus cambios no fueron aprobados"
+                mensaje={`Hola ${contacto.nombre}, te escribimos de Servi Cerca. Revisamos los cambios que enviaste y por ahora no pudimos aprobarlos.${ultimoRechazo?.motivoRechazo ? ` Motivo: ${ultimoRechazo.motivoRechazo}` : ""} Tu perfil sigue visible con los datos anteriores. Si querés corregirlos, pedinos un nuevo enlace respondiendo a este contacto.`}
+              />
+            )}
+            {detalle.estado === "ACTIVO" && !pendiente && cambiosAprobados && (
+              <BotonWhatsapp
+                principal
+                whatsapp={contacto.whatsapp}
+                etiqueta="Avisar que sus cambios fueron aprobados"
+                mensaje={`Hola ${contacto.nombre}, te escribimos de Servi Cerca. Aprobamos los cambios que enviaste y tu perfil ya se muestra actualizado. Si más adelante querés modificar tus datos, pedilo respondiendo a este contacto.`}
+              />
+            )}
+            {detalle.estado === "ACTIVO" && !cambiosRechazados && !cambiosAprobados && (
+              <BotonWhatsapp
+                principal
+                whatsapp={contacto.whatsapp}
                 etiqueta="Avisar que su perfil está activo"
-                mensaje={`Hola ${datos.nombre}, te escribimos de Servi Cerca. Tu registro fue aprobado y tu perfil ya está activo. Si más adelante querés modificar tus datos, pedilo respondiendo a este contacto.`}
+                mensaje={`Hola ${contacto.nombre}, te escribimos de Servi Cerca. Tu registro fue aprobado y tu perfil ya está activo. Si más adelante querés modificar tus datos, pedilo respondiendo a este contacto.`}
               />
             )}
             {detalle.estado === "RECHAZADO" && (
               <BotonWhatsapp
                 principal
-                whatsapp={datos.whatsapp}
+                whatsapp={contacto.whatsapp}
                 etiqueta="Avisar del rechazo"
-                mensaje={`Hola ${datos.nombre}, te escribimos de Servi Cerca. Revisamos tu solicitud y por ahora no pudimos aprobarla.${ultimoRechazo?.motivoRechazo ? ` Motivo: ${ultimoRechazo.motivoRechazo}` : ""}`}
+                mensaje={`Hola ${contacto.nombre}, te escribimos de Servi Cerca. Revisamos tu solicitud y por ahora no pudimos aprobarla.${ultimoRechazo?.motivoRechazo ? ` Motivo: ${ultimoRechazo.motivoRechazo}` : ""}`}
               />
             )}
             <BotonWhatsapp
-              whatsapp={datos.whatsapp}
+              whatsapp={contacto.whatsapp}
               etiqueta="Escribirle"
-              mensaje={`Hola ${datos.nombre}, te escribimos de Servi Cerca.`}
+              mensaje={`Hola ${contacto.nombre}, te escribimos de Servi Cerca.`}
             />
           </div>
         </Tarjeta>
+      )}
+
+      {contacto && detalle.versionPublicada && (detalle.estado === "ACTIVO" || detalle.estado === "SUSPENDIDO") && (
+        <EnlaceEdicionTarjeta
+          operadorId={id}
+          nombre={contacto.nombre}
+          whatsapp={contacto.whatsapp}
+          enRevision={pendiente !== null}
+        />
       )}
 
       {datos ? (
@@ -412,6 +446,118 @@ function DatosVersion({ datos }: { datos: VersionDetalle }) {
   );
 }
 
+/** Resumen de lo que cambia entre el perfil publicado y la versión enviada a revisión. */
+function Cambios({ diferencias }: { diferencias: Diferencias }) {
+  const listas: { titulo: string; items: string[] }[] = [
+    { titulo: "Trabajos agregados", items: diferencias.oficiosAgregados.map((o) => o.nombre) },
+    { titulo: "Trabajos quitados", items: diferencias.oficiosEliminados.map((o) => o.nombre) },
+    { titulo: "Trabajos modificados", items: diferencias.oficiosModificados.map((o) => o.nombre) },
+    { titulo: "Localidades agregadas", items: diferencias.localidadesAgregadas.map((l) => l.nombre) },
+    { titulo: "Localidades quitadas", items: diferencias.localidadesEliminadas.map((l) => l.nombre) },
+    { titulo: "Publicaciones agregadas", items: diferencias.publicacionesAgregadas.map((p) => p.titulo) },
+    { titulo: "Publicaciones modificadas", items: diferencias.publicacionesModificadas.map((p) => p.nueva.titulo) },
+    { titulo: "Publicaciones quitadas", items: diferencias.publicacionesEliminadas.map((p) => p.titulo) },
+  ].filter((lista) => lista.items.length > 0);
+
+  if (diferencias.camposModificados.length === 0 && listas.length === 0) {
+    return <p className="text-muted-foreground">No se detectaron cambios respecto del perfil publicado.</p>;
+  }
+
+  return (
+    <>
+      <p className="mb-2 font-medium">Qué cambia respecto del perfil publicado:</p>
+      <ul className="space-y-1 text-muted-foreground">
+        {diferencias.camposModificados.map((c) => (
+          <li key={c.campo}>
+            <span className="text-foreground">{ETIQUETAS_CAMPO[c.campo] ?? c.campo}:</span> {c.campo === "fotoPerfil" ? "cambió (mirá la nueva abajo)" : `${c.anterior || "—"} → ${c.nuevo || "—"}`}
+          </li>
+        ))}
+        {listas.map((lista) => (
+          <li key={lista.titulo}>
+            <span className="text-foreground">{lista.titulo}:</span> {lista.items.join(", ")}
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+/**
+ * Genera el enlace de edición de un solo uso. La URL se muestra una única vez (el backend solo guarda
+ * su hash) y se envía al WhatsApp registrado, nunca al número desde el que se pidió el cambio.
+ */
+function EnlaceEdicionTarjeta({
+  operadorId,
+  nombre,
+  whatsapp,
+  enRevision,
+}: {
+  operadorId: number;
+  nombre: string;
+  whatsapp: string;
+  enRevision: boolean;
+}) {
+  const manejarError = useAdminError();
+  const [enlace, setEnlace] = useState<EnlaceEdicion | null>(null);
+  const [generando, setGenerando] = useState(false);
+
+  async function generar() {
+    setGenerando(true);
+    try {
+      setEnlace(await generarEnlaceEdicion(operadorId));
+    } catch (e) {
+      manejarError(e);
+    } finally {
+      setGenerando(false);
+    }
+  }
+
+  async function copiar() {
+    if (!enlace) return;
+    try {
+      await navigator.clipboard.writeText(enlace.url);
+      toast.success("Enlace copiado.");
+    } catch {
+      toast.error("No se pudo copiar. Seleccioná el enlace y copialo a mano.");
+    }
+  }
+
+  return (
+    <Tarjeta className="mb-6">
+      <h2 className="mb-3 font-semibold">Enlace para editar sus datos</h2>
+      <p className="mb-4 text-sm text-muted-foreground">
+        {enRevision
+          ? "Tiene cambios esperando revisión: no puede volver a editar hasta que los apruebes o rechaces."
+          : "Sirve una sola vez y vence a las 24 horas. Lo que edite queda pendiente de tu revisión; mientras tanto se sigue mostrando su perfil actual. Generar uno nuevo anula los anteriores."}
+      </p>
+
+      {enlace ? (
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <Input readOnly value={enlace.url} aria-label="Enlace de edición" onFocus={(e) => e.target.select()} />
+            <Button variant="outline" onClick={copiar}>
+              <Copy /> Copiar
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            No se vuelve a mostrar: enviáselo ahora. Vence el {fecha(enlace.fechaExpiracion)}
+          </p>
+          <BotonWhatsapp
+            principal
+            whatsapp={whatsapp}
+            etiqueta={`Enviar al +${whatsapp}`}
+            mensaje={`Hola ${nombre}, te escribimos de Servi Cerca. Con este enlace podés editar los datos de tu perfil: ${enlace.url}\n\nSirve una sola vez. Los cambios se publican después de que los revisemos. Vence el ${fecha(enlace.fechaExpiracion)}`}
+          />
+        </div>
+      ) : (
+        <Button variant="outline" onClick={generar} disabled={generando || enRevision}>
+          {generando ? <Spinner /> : <Link2 />} Generar enlace de edición
+        </Button>
+      )}
+    </Tarjeta>
+  );
+}
+
 function Volver() {
   return (
     <Link href="/maite/operadores" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
@@ -434,7 +580,8 @@ function Dato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
 }
 
 function Imagen({ url, alt, className }: { url: string | null; alt: string; className: string }) {
-  if (!url) {
+  const [rota, setRota] = useState(false);
+  if (!url || rota) {
     return (
       <div className={`grid shrink-0 place-items-center bg-secondary text-muted-foreground ${className}`} title="Sin imagen">
         <ImageOff className="size-6" />
@@ -444,7 +591,7 @@ function Imagen({ url, alt, className }: { url: string | null; alt: string; clas
   return (
     <a href={url} target="_blank" rel="noreferrer" className={`block shrink-0 overflow-hidden bg-secondary ${className}`}>
       {/* eslint-disable-next-line @next/next/no-img-element -- URL firmada de S3 con vencimiento, no pasa por next/image */}
-      <img src={url} alt={alt} className="size-full object-cover" />
+      <img src={url} alt={alt} className="size-full object-cover" onError={() => setRota(true)} />
     </a>
   );
 }

@@ -161,9 +161,9 @@ function ProfessionalCard({
 
       <p className="mt-4 min-h-[48px] text-[0.95rem] leading-6 text-muted-foreground">{descripcion}</p>
 
-      <div className="mt-5 flex flex-col gap-3 border-t border-border/80 pt-5">
+      <div className="mt-5 flex gap-2 border-t border-border/80 pt-5">
         <a
-          className="contact-button"
+          className="contact-button min-w-0 flex-1 px-3"
           href={`https://wa.me/${professional.whatsapp}?text=${message}`}
           target="_blank"
           rel="noreferrer"
@@ -172,6 +172,13 @@ function ProfessionalCard({
           <MessageCircle className="size-4" />
           Contactar a {professional.nombre}
         </a>
+        <Link
+          className="more-button"
+          href={`/profesional/${professional.id}?servicio=${encodeURIComponent(oficio.nombre)}&localidad=${encodeURIComponent(location)}`}
+          aria-label={`Ver más sobre ${professional.nombre} ${professional.apellido}`}
+        >
+          Ver más
+        </Link>
       </div>
     </article>
   );

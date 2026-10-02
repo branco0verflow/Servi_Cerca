@@ -192,6 +192,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .service-tag.active { border-color: #4f7cff42; color: #8da8ff; background: #4f7cff14; }
 .contact-button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: .55rem; border-radius: 12px; color: #052014; background: #45d98f; font-size: .87rem; font-weight: 740; text-decoration: none; transition: transform 180ms ease, background-color 180ms ease; }
 .contact-button:hover { transform: translateY(-1px); background: #63e6a5; }
+.more-button { display: inline-flex; min-height: 44px; flex: 0 0 auto; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 12px; padding-inline: .95rem; color: var(--foreground); font-size: .87rem; font-weight: 680; text-decoration: none; transition: border-color 180ms ease, background-color 180ms ease; }
+.more-button:hover { border-color: color-mix(in srgb, var(--primary) 50%, var(--border)); background: var(--secondary); }
 .results-placeholder, .empty-result { display: flex; align-items: center; justify-content: center; gap: .8rem; min-height: 140px; border: 1px dashed var(--border); border-radius: 22px; color: var(--muted-foreground); text-align: center; }
 .empty-result { justify-content: flex-start; padding: 1.4rem; text-align: left; }
 .empty-result h3 { color: var(--foreground); font-weight: 660; }

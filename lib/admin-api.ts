@@ -223,10 +223,7 @@ export type VersionRevision = {
   esRegistroInicial: boolean;
   versionSolicitada: VersionDetalle;
   versionPublicada: VersionDetalle | null;
-  diferencias: {
-    hayCambios: boolean;
-    camposModificados: { campo: string; anterior: string | null; nuevo: string | null }[];
-  } | null;
+  diferencias: Diferencias | null;
 };
 
 export type VersionResumen = {
@@ -264,3 +261,26 @@ export const rechazarVersion = (versionId: number, motivo: string) =>
 export const suspenderOperador = (id: number) => pedir<OperadorDetalle>("POST", `/api/admin/operators/${id}/suspend`);
 export const reactivarOperador = (id: number) =>
   pedir<OperadorDetalle>("POST", `/api/admin/operators/${id}/reactivate`);
+
+// ---------- Enlaces de edición del operador ----------
+
+/** La URL se muestra una sola vez: el backend solo guarda el hash del token. */
+export type EnlaceEdicion = { url: string; fechaExpiracion: string };
+
+/** Genera un enlace de un solo uso (24 h) y revoca los anteriores. */
+export const generarEnlaceEdicion = (id: number) =>
+  pedir<EnlaceEdicion>("POST", `/api/admin/operators/${id}/edit-links`);
+
+/** Diferencias entre la versión publicada y la enviada a revisión. */
+export type Diferencias = {
+  hayCambios: boolean;
+  camposModificados: { campo: string; anterior: string | null; nuevo: string | null }[];
+  oficiosAgregados: { nombre: string }[];
+  oficiosEliminados: { nombre: string }[];
+  oficiosModificados: { nombre: string }[];
+  localidadesAgregadas: { nombre: string }[];
+  localidadesEliminadas: { nombre: string }[];
+  publicacionesAgregadas: { titulo: string }[];
+  publicacionesModificadas: { nueva: { titulo: string } }[];
+  publicacionesEliminadas: { titulo: string }[];
+};
