@@ -396,7 +396,7 @@ export default function Home() {
   }
 
   return (
-    <main id="inicio" className="min-h-screen overflow-hidden">
+    <main id="inicio" className="relative min-h-screen overflow-hidden">
       <div className="ambient ambient-one" aria-hidden="true" />
       <div className="ambient ambient-two" aria-hidden="true" />
 
