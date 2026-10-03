@@ -587,7 +587,17 @@ export default function Home() {
       <footer>
         <div className="container-shell flex flex-col items-center justify-between gap-4 py-8 text-sm text-muted-foreground sm:flex-row">
           <Brand theme={theme} />
-          <p>© 2026 Servi Cerca · Todos los derechos reservados.</p>
+          <div className="flex flex-col items-center gap-2 sm:items-end">
+            <nav aria-label="Documentos legales" className="flex gap-5">
+              <Link href="/terminos" className="hover:text-foreground hover:underline">
+                Términos y condiciones
+              </Link>
+              <Link href="/privacidad" className="hover:text-foreground hover:underline">
+                Política de privacidad
+              </Link>
+            </nav>
+            <p>© 2026 Servi Cerca · Todos los derechos reservados.</p>
+          </div>
         </div>
       </footer>
     </main>

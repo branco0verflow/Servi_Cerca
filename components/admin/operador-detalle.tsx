@@ -173,6 +173,11 @@ export function OperadorDetalleSection({ id }: { id: number }) {
               </span>
             )}
           </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {detalle.terminosVersion
+              ? `Aceptó los Términos y la Política de privacidad (versión ${detalle.terminosVersion}) el ${fecha(detalle.terminosAceptadosEn)}`
+              : "Sin constancia de aceptación de los Términos (se registró antes de que se pidiera)."}
+          </p>
         </div>
         {detalle.estado === "ACTIVO" && (
           <Button variant="outline" onClick={() => setConfirmando("suspender")} disabled={procesando}>

@@ -89,7 +89,7 @@ export const canjearEnlace = (token: string) => pedir<unknown>("POST", "/api/ope
 export const obtenerMe = () => pedir<OperadorMe>("GET", "/api/operator-access/me");
 /** Devuelve el borrador; si no hay una versión abierta, el backend lo crea copiando la versión aprobada. */
 export const obtenerBorrador = () => pedir<Borrador>("GET", "/api/operator-access/draft");
-export const actualizarBorrador = (datos: Omit<RegistroDatos, "publicaciones">) =>
+export const actualizarBorrador = (datos: Omit<RegistroDatos, "publicaciones" | "aceptaTerminos">) =>
   pedir<Borrador>("PUT", "/api/operator-access/draft", datos);
 
 export function cambiarFoto(imagen: File) {

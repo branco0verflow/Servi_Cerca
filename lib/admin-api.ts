@@ -245,6 +245,9 @@ export type OperadorDetalle = {
   versionPublicada: VersionDetalle | null;
   versiones: VersionResumen[];
   calificaciones: { promedio: number | null; cantidad: number };
+  /** Versión de los Términos y la Política de privacidad aceptada al registrarse (null: registrado antes). */
+  terminosVersion: string | null;
+  terminosAceptadosEn: string | null;
 };
 
 export const listarVersionesPendientes = () =>

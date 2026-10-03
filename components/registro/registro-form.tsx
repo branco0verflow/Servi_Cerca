@@ -12,6 +12,7 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { RUTA_PRIVACIDAD, RUTA_TERMINOS } from "@/lib/legal";
 import {
   Localidad,
   Moneda,
@@ -75,7 +76,7 @@ export type ValoresIniciales = {
 
 /** Lo que el formulario entrega al enviar. Las imágenes son archivos locales: todavía no se subieron. */
 export type ValoresFormulario = {
-  datos: Omit<RegistroDatos, "publicaciones">;
+  datos: Omit<RegistroDatos, "publicaciones" | "aceptaTerminos">;
   fotoPerfil: File | null;
   /** El operador quitó la foto que tenía (solo en edición). */
   fotoQuitada: boolean;
@@ -83,6 +84,8 @@ export type ValoresFormulario = {
   publicaciones: { id?: number; datos: PublicacionDatos; imagen: File | null }[];
   /** Ids de publicaciones existentes que el operador quitó (solo en edición). */
   publicacionesQuitadas: number[];
+  /** Aceptó los Términos y la Política de privacidad (solo en el registro). */
+  aceptaTerminos: boolean;
 };
 
 type Props = {
@@ -90,6 +93,8 @@ type Props = {
   avisoTitulo: string;
   avisoTexto: string;
   textoBoton: string;
+  /** Registro: exige aceptar los Términos y la Política de privacidad antes de enviar. */
+  pedirAceptacion?: boolean;
   /** Envía los datos. Si lanza PublicApiError, el formulario muestra su mensaje. */
   enviar: (valores: ValoresFormulario) => Promise<void>;
 };
@@ -121,7 +126,7 @@ function oficiosIniciales(inicial?: ValoresIniciales): Record<number, OficioEleg
   );
 }
 
-export function OperadorFormulario({ inicial, avisoTitulo, avisoTexto, textoBoton, enviar }: Props) {
+export function OperadorFormulario({ inicial, avisoTitulo, avisoTexto, textoBoton, pedirAceptacion = false, enviar }: Props) {
   const [localidades, setLocalidades] = useState<Localidad[] | null>(null);
   const [oficios, setOficios] = useState<Oficio[] | null>(null);
   const [errorCarga, setErrorCarga] = useState(false);
@@ -143,6 +148,7 @@ export function OperadorFormulario({ inicial, avisoTitulo, avisoTexto, textoBoto
 
   const [errores, setErrores] = useState<Errores>({});
   const [errorGeneral, setErrorGeneral] = useState<string | null>(null);
+  const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -236,6 +242,9 @@ export function OperadorFormulario({ inicial, avisoTitulo, avisoTexto, textoBoto
         e[`publicacion-${p.clave}-precio`] = "El precio debe ser un número, por ejemplo 1500.";
       }
     }
+    if (pedirAceptacion && !aceptaTerminos) {
+      e.terminos = "Tenés que aceptar los Términos y condiciones y la Política de privacidad.";
+    }
     return e;
   }
 
@@ -294,6 +303,7 @@ export function OperadorFormulario({ inicial, avisoTitulo, avisoTexto, textoBoto
           };
         }),
         publicacionesQuitadas,
+        aceptaTerminos,
       });
       window.scrollTo({ top: 0 });
     } catch (e) {
@@ -551,6 +561,31 @@ export function OperadorFormulario({ inicial, avisoTitulo, avisoTexto, textoBoto
           </div>
         </div>
 
+        {pedirAceptacion && (
+          <div data-invalid={errores.terminos ? true : undefined} className="mt-5">
+            <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm">
+              <Checkbox
+                className="mt-0.5"
+                checked={aceptaTerminos}
+                onCheckedChange={(valor) => setAceptaTerminos(valor === true)}
+                disabled={enviando}
+              />
+              <span>
+                Leí y acepto los{" "}
+                <Link href={RUTA_TERMINOS} target="_blank" className="text-primary underline">
+                  Términos y condiciones
+                </Link>{" "}
+                y la{" "}
+                <Link href={RUTA_PRIVACIDAD} target="_blank" className="text-primary underline">
+                  Política de privacidad
+                </Link>
+                , y autorizo la publicación de los datos de mi perfil.
+              </span>
+            </label>
+            {errores.terminos && <FieldError className="mt-2">{errores.terminos}</FieldError>}
+          </div>
+        )}
+
         {errorGeneral && (
           <div role="alert" className="mt-5 flex gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
             <TriangleAlert className="mt-0.5 size-4 shrink-0" />
@@ -587,9 +622,10 @@ export function RegistroForm() {
       avisoTitulo="La revisión puede tardar hasta 24 horas."
       avisoTexto="Tus fotos e imágenes se suben recién cuando enviás el formulario. Revisamos la información antes de publicar tu perfil y te avisamos por WhatsApp."
       textoBoton="Enviar formulario a revisión"
+      pedirAceptacion
       enviar={async (valores) => {
         const resultado = await registrarOperador(
-          { ...valores.datos, publicaciones: valores.publicaciones.map((p) => p.datos) },
+          { ...valores.datos, publicaciones: valores.publicaciones.map((p) => p.datos), aceptaTerminos: valores.aceptaTerminos },
           valores.fotoPerfil,
           valores.publicaciones.map((p) => p.imagen as File),
         );

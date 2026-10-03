@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { Check, Star, TriangleAlert } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { RUTA_PRIVACIDAD, RUTA_TERMINOS } from "@/lib/legal";
 import { PublicApiError, calificarOperador } from "@/lib/public-api";
 
 const ETIQUETAS_PUNTAJE = ["", "Malo", "Regular", "Bueno", "Muy bueno", "Excelente"];
@@ -204,7 +206,19 @@ function FormularioCalificacion({
         </div>
       )}
 
-      <DialogFooter className="mt-6">
+      <p className="mt-5 text-xs leading-5 text-muted-foreground">
+        Si se aprueba, se publicarán tu puntaje, tu comentario y el nombre que indiques. Al enviar aceptás los{" "}
+        <Link href={RUTA_TERMINOS} target="_blank" className="underline">
+          Términos y condiciones
+        </Link>{" "}
+        y la{" "}
+        <Link href={RUTA_PRIVACIDAD} target="_blank" className="underline">
+          Política de privacidad
+        </Link>
+        .
+      </p>
+
+      <DialogFooter className="mt-5">
         <Button type="button" variant="outline" className="h-11 sm:h-9" onClick={onCerrar} disabled={enviando}>
           Cancelar
         </Button>

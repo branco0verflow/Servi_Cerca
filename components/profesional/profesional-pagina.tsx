@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ImageOff, MapPin, MessageCircle, Phone, ShieldCheck, Star } from "lucide-react";
 
+import { PieLegal } from "@/components/legal/documento-legal";
 import { CalificarOperador } from "@/components/profesional/calificar-operador";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -209,6 +210,7 @@ export function ProfesionalPagina({ id, servicio, localidad }: Props) {
             </Seccion>
           </div>
         )}
+        <PieLegal className="mt-12" />
       </main>
 
       <Dialog open={ampliada !== null} onOpenChange={(open) => !open && setAmpliada(null)}>

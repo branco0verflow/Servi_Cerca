@@ -40,6 +40,8 @@ export type RegistroDatos = {
   localidadIds: number[];
   oficios: OficioOfrecido[];
   publicaciones: PublicacionDatos[];
+  /** Aceptación de los Términos y la Política de privacidad; el backend la exige en el registro. */
+  aceptaTerminos: boolean;
 };
 
 export type ImagenResultado = { indice: number | null; titulo: string; subida: boolean; error: string | null };

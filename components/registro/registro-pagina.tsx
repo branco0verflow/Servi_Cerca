@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
+import { PieLegal } from "@/components/legal/documento-legal";
 import { RegistroForm } from "@/components/registro/registro-form";
 import { useSavedTheme } from "@/hooks/use-saved-theme";
 
@@ -36,6 +37,7 @@ export function RegistroPagina() {
           Completá tus datos para crear tu perfil profesional. Lo revisamos antes de publicarlo.
         </p>
         <RegistroForm />
+        <PieLegal className="mt-12" />
       </main>
     </div>
   );

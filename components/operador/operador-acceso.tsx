@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Check, Clock3, LinkIcon, TriangleAlert } from "lucide-react";
 
+import { PieLegal } from "@/components/legal/documento-legal";
 import { OperadorFormulario, ValoresFormulario, ValoresIniciales } from "@/components/registro/registro-form";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,6 +25,7 @@ import {
   obtenerMe,
   quitarFoto,
 } from "@/lib/operator-api";
+import { RUTA_PRIVACIDAD, RUTA_TERMINOS } from "@/lib/legal";
 import { PublicApiError } from "@/lib/public-api";
 
 type Estado =
@@ -202,8 +204,20 @@ export function OperadorAcceso() {
               textoBoton="Enviar cambios a revisión"
               enviar={enviar}
             />
+            <p className="mt-4 text-xs leading-5 text-muted-foreground">
+              Tus datos se tratan según la{" "}
+              <Link href={RUTA_PRIVACIDAD} target="_blank" className="underline">
+                Política de privacidad
+              </Link>{" "}
+              y los{" "}
+              <Link href={RUTA_TERMINOS} target="_blank" className="underline">
+                Términos y condiciones
+              </Link>{" "}
+              que aceptaste al registrarte.
+            </p>
           </>
         )}
+        <PieLegal className="mt-12" />
       </main>
     </div>
   );
