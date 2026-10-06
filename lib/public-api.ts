@@ -134,9 +134,14 @@ export type OperadorResumen = {
 
 export type ResultadoBusqueda = { content: OperadorResumen[]; totalElements: number };
 
-/** Operadores aprobados que ofrecen ese trabajo en esa localidad, mejor calificados primero. */
-export const buscarOperadores = (localidadId: number, oficioId: number) =>
-  obtener<ResultadoBusqueda>(`/api/public/operators/search?locationId=${localidadId}&tradeId=${oficioId}&size=24`);
+/** Cuántos profesionales se piden por vez en la búsqueda pública. */
+export const TAMANO_BUSQUEDA = 12;
+
+/** Operadores aprobados que ofrecen ese trabajo en esa localidad, mejor calificados primero. Paginado. */
+export const buscarOperadores = (localidadId: number, oficioId: number, page = 0) =>
+  obtener<ResultadoBusqueda>(
+    `/api/public/operators/search?locationId=${localidadId}&tradeId=${oficioId}&size=${TAMANO_BUSQUEDA}&page=${page}`,
+  );
 
 // ---------- Ficha pública de un operador ----------
 

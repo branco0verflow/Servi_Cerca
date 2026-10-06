@@ -252,8 +252,8 @@ export type OperadorDetalle = {
   suscripcion: Suscripcion;
 };
 
-export const listarVersionesPendientes = () =>
-  pedir<Pagina<VersionPendiente>>("GET", "/api/admin/operator-versions?estado=PENDIENTE_REVISION&size=100");
+export const listarVersionesPendientes = (page: number) =>
+  pedir<Pagina<VersionPendiente>>("GET", `/api/admin/operator-versions?estado=PENDIENTE_REVISION&size=20&page=${page}`);
 export const listarOperadores = (estado: EstadoOperador | null, page: number) =>
   pedir<Pagina<OperadorResumen>>("GET", `/api/admin/operators?size=20&page=${page}${estado ? `&estado=${estado}` : ""}`);
 export const obtenerOperador = (id: number) => pedir<OperadorDetalle>("GET", `/api/admin/operators/${id}`);
@@ -351,6 +351,9 @@ export const definirVencimiento = (operadorId: number, fechaVencimiento: string)
 /** Deja constancia de que se avisó al operador que su suscripción está por vencer o venció. */
 export const registrarAvisoSuscripcion = (operadorId: number) =>
   pedir<Suscripcion>("POST", `/api/admin/operators/${operadorId}/subscription/notice`);
-/** Operadores aprobados con la suscripción vencida o que vence en 30 días o menos; primero los más urgentes. */
-export const listarSuscripcionesPorVencer = () =>
-  pedir<SuscripcionOperador[]>("GET", "/api/admin/subscriptions/expiring");
+/** Operadores aprobados cuya suscripción sigue vigente pero vence en 30 días o menos; primero las que vencen antes. */
+export const listarSuscripcionesPorVencer = (page: number) =>
+  pedir<Pagina<SuscripcionOperador>>("GET", `/api/admin/subscriptions/expiring?size=20&page=${page}`);
+/** Operadores aprobados con la suscripción vencida (no se muestran en el sitio); primero las vencidas más recientes. */
+export const listarSuscripcionesVencidas = (page: number) =>
+  pedir<Pagina<SuscripcionOperador>>("GET", `/api/admin/subscriptions/expired?size=20&page=${page}`);

@@ -42,7 +42,7 @@ const LOCALIDAD_PREDETERMINADA = "Colonia del Sacramento";
 // Colores del avatar con iniciales, para operadores sin foto de perfil.
 const AVATAR_TONES = ["from-blue-500 to-blue-800", "from-emerald-400 to-emerald-800", "from-cyan-500 to-teal-800"];
 
-type Busqueda = { clave: string; operadores: OperadorResumen[]; total: number; error: boolean };
+type Busqueda = { clave: string; operadores: OperadorResumen[]; total: number; pagina: number; error: boolean };
 
 type WebMcpContext = {
   registerTool: (
@@ -206,6 +206,7 @@ export default function Home() {
   const [localidadElegida, setLocalidadElegida] = useState<number | null>(null);
   const [selectedService, setSelectedService] = useState("");
   const [busqueda, setBusqueda] = useState<Busqueda | null>(null);
+  const [cargandoMas, setCargandoMas] = useState(false);
   const heroRef = useRef<HTMLElement>(null);
   const resultsRef = useRef<HTMLElement>(null);
   // Desplazamiento a los resultados que falta completar cuando terminen de cargar.
@@ -229,6 +230,7 @@ export default function Home() {
   const oficioId = oficio?.id ?? null;
   const clave = localidadId !== null && oficioId !== null ? `${localidadId}-${oficioId}` : null;
   const resultado = busqueda && busqueda.clave === clave ? busqueda : null;
+  const claveResultado = resultado?.clave ?? null;
   const buscando = selectedService !== "" && (oficios === null || (clave !== null && resultado === null));
   const location = localidad?.nombre ?? "";
 
@@ -267,9 +269,9 @@ export default function Home() {
       .then(
         (r) =>
           vigente &&
-          setBusqueda({ clave: claveBuscada, operadores: r.content, total: r.totalElements, error: false }),
+          setBusqueda({ clave: claveBuscada, operadores: r.content, total: r.totalElements, pagina: 0, error: false }),
       )
-      .catch(() => vigente && setBusqueda({ clave: claveBuscada, operadores: [], total: 0, error: true }));
+      .catch(() => vigente && setBusqueda({ clave: claveBuscada, operadores: [], total: 0, pagina: 0, error: true }));
     return () => {
       vigente = false;
     };
@@ -355,7 +357,8 @@ export default function Home() {
   }, [localidades, oficios]);
 
   useEffect(() => {
-    if (!resultado || !resultsRef.current) return;
+    // Solo al cambiar de búsqueda: al agregar más tarjetas con "Ver más" no se vuelve a animar ni a desplazar.
+    if (!claveResultado || !resultsRef.current) return;
     gsap.fromTo(
       resultsRef.current.querySelectorAll(".professional-card, .empty-result"),
       { y: 20, opacity: 0 },
@@ -366,7 +369,28 @@ export default function Home() {
       resultsRef.current.scrollIntoView({ behavior: scrollPendiente.current, block: "start" });
       scrollPendiente.current = null;
     }
-  }, [resultado]);
+  }, [claveResultado]);
+
+  // Pide la página siguiente de la misma búsqueda y la agrega a las tarjetas ya mostradas.
+  async function verMas() {
+    if (!resultado || localidadId === null || oficioId === null || cargandoMas) return;
+    const claveActual = resultado.clave;
+    const siguiente = resultado.pagina + 1;
+    setCargandoMas(true);
+    try {
+      const r = await buscarOperadores(localidadId, oficioId, siguiente);
+      // Si mientras tanto se cambió de búsqueda, este resultado ya no corresponde.
+      setBusqueda((actual) =>
+        actual && actual.clave === claveActual
+          ? { ...actual, operadores: [...actual.operadores, ...r.content], total: r.totalElements, pagina: siguiente }
+          : actual,
+      );
+    } catch {
+      // Si falla, el botón queda disponible para reintentar.
+    } finally {
+      setCargandoMas(false);
+    }
+  }
 
   function toggleTheme() {
     const nextTheme = theme === "dark" ? "light" : "dark";
@@ -532,11 +556,23 @@ export default function Home() {
                   </div>
                 </div>
               ) : resultado && resultado.operadores.length > 0 ? (
-                <div className="professionals-grid">
-                  {resultado.operadores.map((professional) => (
-                    <ProfessionalCard key={professional.id} professional={professional} location={location} />
-                  ))}
-                </div>
+                <>
+                  <div className="professionals-grid">
+                    {resultado.operadores.map((professional) => (
+                      <ProfessionalCard key={professional.id} professional={professional} location={location} />
+                    ))}
+                  </div>
+                  {resultado.operadores.length < resultado.total && (
+                    <div className="mt-8 flex flex-col items-center gap-2">
+                      <Button variant="outline" className="h-11 rounded-xl px-6" onClick={verMas} disabled={cargandoMas}>
+                        {cargandoMas ? "Cargando…" : "Ver más profesionales"}
+                      </Button>
+                      <p className="text-sm text-muted-foreground">
+                        Mostrando {resultado.operadores.length} de {resultado.total}
+                      </p>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="empty-result">
                   <span className="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary">
