@@ -6,6 +6,7 @@ import { ArrowLeft, Check, Copy, ImageOff, Link2, MessageCircle, Star, X } from 
 import { toast } from "sonner";
 
 import { useAdminError } from "@/components/admin/admin-shell";
+import { SuscripcionTarjeta } from "@/components/admin/suscripcion-tarjeta";
 import { EstadoOperadorBadge, fecha } from "@/components/admin/operadores-section";
 import {
   AlertDialog,
@@ -152,6 +153,8 @@ export function OperadorDetalleSection({ id }: { id: number }) {
   const ultimoRechazo = porNumero.find((v) => v.estadoVersion === "RECHAZADA" && v.motivoRechazo);
   const cambiosRechazados = ultimaVersion?.estadoVersion === "RECHAZADA" && ultimaVersion.numeroVersion > 1;
   const cambiosAprobados = !cambiosRechazados && (detalle.versionPublicada?.numeroVersion ?? 1) > 1;
+  // El registro inicial no se puede aprobar sin una suscripción vigente (el backend también lo exige).
+  const faltaSuscripcion = pendiente?.esRegistroInicial === true && detalle.suscripcion.estado !== "ACTIVA";
 
   return (
     <section>
@@ -195,6 +198,15 @@ export function OperadorDetalleSection({ id }: { id: number }) {
         )}
       </div>
 
+      <SuscripcionTarjeta
+        operadorId={id}
+        suscripcion={detalle.suscripcion}
+        nombre={contacto?.nombre ?? ""}
+        whatsapp={detalle.versionPublicada?.whatsapp ?? null}
+        aprobado={detalle.estado === "ACTIVO" || detalle.estado === "SUSPENDIDO"}
+        onCambio={async () => aplicar(await obtenerDatos(id))}
+      />
+
       {pendiente && (
         <Tarjeta className="mb-6 border-primary/40">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -213,11 +225,16 @@ export function OperadorDetalleSection({ id }: { id: number }) {
               <Button variant="outline" onClick={() => setRechazando(true)} disabled={procesando}>
                 <X /> Rechazar
               </Button>
-              <Button onClick={() => setConfirmando("aprobar")} disabled={procesando}>
+              <Button onClick={() => setConfirmando("aprobar")} disabled={procesando || faltaSuscripcion}>
                 <Check /> Aprobar
               </Button>
             </div>
           </div>
+          {faltaSuscripcion && (
+            <p className="mt-3 text-sm text-amber-600 dark:text-amber-400">
+              Para aprobar el registro, primero definí el vencimiento de la suscripción (arriba).
+            </p>
+          )}
           {!pendiente.esRegistroInicial && pendiente.diferencias && (
             <div className="mt-4 border-t border-border pt-4 text-sm">
               <Cambios diferencias={pendiente.diferencias} />

@@ -37,9 +37,9 @@ const SECCIONES: SeccionLegal[] = [
           <li>Foto de perfil y publicaciones con imágenes, títulos y descripciones.</li>
         </ul>
         <p>
-          También registramos la fecha de registro, la versión de estos documentos que aceptó, el historial de
-          revisiones de su perfil (fechas, resultado y motivo de rechazo, si lo hubo) y los enlaces de edición
-          generados.
+          También registramos la fecha de registro, la versión de estos documentos que aceptó, la fecha de vencimiento de
+          su suscripción y los avisos enviados sobre ella, el historial de revisiones de su perfil (fechas, resultado y
+          motivo de rechazo, si lo hubo) y los enlaces de edición generados.
         </p>
         <p>
           <strong>Qué se publica.</strong> Una vez aprobado, el perfil muestra públicamente nombre, apellido, nombre

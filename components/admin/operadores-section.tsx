@@ -1,10 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Users } from "lucide-react";
 
 import { useAdminError } from "@/components/admin/admin-shell";
+import {
+  BotonAvisoSuscripcion,
+  SuscripcionBadge,
+  fechaCorta,
+  plazoSuscripcion,
+} from "@/components/admin/suscripcion-tarjeta";
 import { TablaCargando } from "@/components/admin/tipos-section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,8 +21,10 @@ import {
   EstadoOperador,
   OperadorResumen,
   Pagina,
+  SuscripcionOperador,
   VersionPendiente,
   listarOperadores,
+  listarSuscripcionesPorVencer,
   listarVersionesPendientes,
 } from "@/lib/admin-api";
 import { cn } from "@/lib/utils";
@@ -30,17 +38,25 @@ const ESTADOS: { valor: EstadoOperador; etiqueta: string }[] = [
 
 export function OperadoresSection() {
   const manejarError = useAdminError();
-  const [vista, setVista] = useState<"pendientes" | "todos">("pendientes");
+  const [vista, setVista] = useState<"pendientes" | "suscripciones" | "todos">("pendientes");
   const [pendientes, setPendientes] = useState<VersionPendiente[] | null>(null);
+  // Suscripciones vencidas o que vencen en 30 días o menos.
+  const [porVencer, setPorVencer] = useState<SuscripcionOperador[] | null>(null);
   const [estado, setEstado] = useState<EstadoOperador | null>(null);
   const [pagina, setPagina] = useState(0);
   const [operadores, setOperadores] = useState<Pagina<OperadorResumen> | null>(null);
+
+  const cargarPorVencer = useCallback(
+    () => listarSuscripcionesPorVencer().then(setPorVencer).catch(manejarError),
+    [manejarError],
+  );
 
   useEffect(() => {
     listarVersionesPendientes()
       .then((respuesta) => setPendientes(respuesta.content))
       .catch(manejarError);
-  }, [manejarError]);
+    cargarPorVencer();
+  }, [manejarError, cargarPorVencer]);
 
   useEffect(() => {
     if (vista !== "todos") return;
@@ -69,6 +85,12 @@ export function OperadoresSection() {
           <Pestana activa={vista === "pendientes"} onClick={() => setVista("pendientes")}>
             Pendientes de revisión
             {pendientes !== null && pendientes.length > 0 && <Badge className="ml-2">{pendientes.length}</Badge>}
+          </Pestana>
+          <Pestana activa={vista === "suscripciones"} onClick={() => setVista("suscripciones")}>
+            Suscripciones por vencer
+            {porVencer !== null && porVencer.length > 0 && (
+              <Badge className="ml-2 bg-amber-500 text-black">{porVencer.length}</Badge>
+            )}
           </Pestana>
           <Pestana activa={vista === "todos"} onClick={() => setVista("todos")}>
             Todos
@@ -130,6 +152,62 @@ export function OperadoresSection() {
             </Table>
           </div>
         )
+      ) : vista === "suscripciones" ? (
+        porVencer === null ? (
+          <TablaCargando />
+        ) : porVencer.length === 0 ? (
+          <Vacio
+            titulo="No hay suscripciones por vencer"
+            descripcion="Acá aparecen las que vencen en 30 días o menos y las que ya vencieron."
+          />
+        ) : (
+          <div className="overflow-x-auto rounded-(--radius) border border-border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Vencimiento</TableHead>
+                  <TableHead>Aviso</TableHead>
+                  <TableHead className="w-64" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {porVencer.map((s) => (
+                  <TableRow key={s.operadorId}>
+                    <TableCell className="whitespace-normal">
+                      <NombreOperador nombre={s.nombre} apellido={s.apellido} nombreComercial={s.nombreComercial} />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <SuscripcionBadge suscripcion={s.suscripcion} />
+                        {s.suscripcion.fechaVencimiento && fechaCorta(s.suscripcion.fechaVencimiento)}
+                      </div>
+                      <div className="mt-0.5 text-sm text-muted-foreground">{plazoSuscripcion(s.suscripcion)}</div>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {s.suscripcion.fechaAvisoEnviado ? `Avisado el ${fecha(s.suscripcion.fechaAvisoEnviado)}` : "Sin avisar"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        <BotonAvisoSuscripcion
+                          compacto
+                          operadorId={s.operadorId}
+                          nombre={s.nombre}
+                          whatsapp={s.whatsapp}
+                          suscripcion={s.suscripcion}
+                          onAvisado={cargarPorVencer}
+                        />
+                        <Button asChild size="sm" variant="outline">
+                          <Link href={`/maite/operadores/${s.operadorId}`}>Renovar</Link>
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )
       ) : operadores === null ? (
         <TablaCargando />
       ) : operadores.content.length === 0 ? (
@@ -160,6 +238,14 @@ export function OperadoresSection() {
                           cambios pendientes
                         </Badge>
                       )}
+                      {/* En activos y suspendidos se avisa solo lo que requiere atención: vencida, por vencer o sin fecha. */}
+                      {o.suscripcion &&
+                        (o.estado === "ACTIVO" || o.estado === "SUSPENDIDO") &&
+                        (o.suscripcion.estado !== "ACTIVA" || o.suscripcion.porVencer) && (
+                          <span className="ml-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                            suscripción <SuscripcionBadge suscripcion={o.suscripcion} />
+                          </span>
+                        )}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button asChild size="sm" variant="outline">

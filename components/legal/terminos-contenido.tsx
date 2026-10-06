@@ -113,8 +113,10 @@ const SECCIONES: SeccionLegal[] = [
           no debe compartirse.
         </p>
         <p>
-          <strong>Costo.</strong> Actualmente publicar un perfil es gratuito. Si en el futuro se establecen costos, se
-          informarán con anticipación y requerirán la aceptación del Profesional. <Pendiente>confirmar</Pendiente>
+          <strong>Suscripción.</strong> La publicación del perfil requiere una suscripción vigente, cuyo precio, duración y
+          forma de pago se acuerdan con Servi Cerca. <Pendiente>definir precio y condiciones</Pendiente> Antes de que
+          venza, Servi Cerca puede avisar al Profesional por WhatsApp. Si la suscripción vence sin renovarse, el perfil
+          deja de mostrarse en el Sitio hasta que se renueve; sus datos y calificaciones se conservan.
         </p>
       </>
     ),

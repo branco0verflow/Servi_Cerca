@@ -176,6 +176,7 @@ export type OperadorResumen = {
   whatsapp: string;
   tieneVersionPendiente: boolean;
   fechaCreacion: string;
+  suscripcion: Suscripcion | null;
 };
 
 export type OficioOfrecido = {
@@ -248,6 +249,7 @@ export type OperadorDetalle = {
   /** Versión de los Términos y la Política de privacidad aceptada al registrarse (null: registrado antes). */
   terminosVersion: string | null;
   terminosAceptadosEn: string | null;
+  suscripcion: Suscripcion;
 };
 
 export const listarVersionesPendientes = () =>
@@ -314,3 +316,41 @@ export const listarCalificacionesAdmin = (estado: EstadoCalificacion | null, pag
 export const aprobarCalificacion = (id: number) => pedir<CalificacionAdmin>("POST", `/api/admin/ratings/${id}/approve`);
 export const rechazarCalificacion = (id: number, motivo: string | null) =>
   pedir<CalificacionAdmin>("POST", `/api/admin/ratings/${id}/reject`, { motivo });
+
+// ---------- Suscripciones ----------
+
+/**
+ * Suscripción de un operador. El estado lo calcula el backend a partir de la fecha:
+ * sin fecha es PENDIENTE; con la suscripción VENCIDA el operador no se muestra en el sitio.
+ */
+export type Suscripcion = {
+  /** Primer día en que deja de estar vigente, como AAAA-MM-DD; null si todavía no se definió. */
+  fechaVencimiento: string | null;
+  estado: "PENDIENTE" | "ACTIVA" | "VENCIDA";
+  /** Días hasta el vencimiento (0 o negativo si ya venció); null si no tiene fecha. */
+  diasRestantes: number | null;
+  /** Vigente, pero vence en 30 días o menos. */
+  porVencer: boolean;
+  /** Cuándo se le avisó que está por vencer; se reinicia al renovar. */
+  fechaAvisoEnviado: string | null;
+};
+
+export type SuscripcionOperador = {
+  operadorId: number;
+  estadoOperador: EstadoOperador;
+  nombre: string;
+  apellido: string;
+  nombreComercial: string | null;
+  whatsapp: string;
+  suscripcion: Suscripcion;
+};
+
+/** Define o renueva el vencimiento (AAAA-MM-DD, posterior a hoy). */
+export const definirVencimiento = (operadorId: number, fechaVencimiento: string) =>
+  pedir<Suscripcion>("PUT", `/api/admin/operators/${operadorId}/subscription`, { fechaVencimiento });
+/** Deja constancia de que se avisó al operador que su suscripción está por vencer o venció. */
+export const registrarAvisoSuscripcion = (operadorId: number) =>
+  pedir<Suscripcion>("POST", `/api/admin/operators/${operadorId}/subscription/notice`);
+/** Operadores aprobados con la suscripción vencida o que vence en 30 días o menos; primero los más urgentes. */
+export const listarSuscripcionesPorVencer = () =>
+  pedir<SuscripcionOperador[]>("GET", "/api/admin/subscriptions/expiring");
