@@ -357,3 +357,19 @@ export const listarSuscripcionesPorVencer = (page: number) =>
 /** Operadores aprobados con la suscripción vencida (no se muestran en el sitio); primero las vencidas más recientes. */
 export const listarSuscripcionesVencidas = (page: number) =>
   pedir<Pagina<SuscripcionOperador>>("GET", `/api/admin/subscriptions/expired?size=20&page=${page}`);
+
+// ---------- Eliminación definitiva de un operador ----------
+
+export type OperadorEliminado = {
+  operadorId: number;
+  versiones: number;
+  publicaciones: number;
+  calificaciones: number;
+  enlacesEdicion: number;
+  /** Imágenes que tenía en S3 y cuántas se borraron en el momento; el resto se reintenta solo. */
+  archivos: number;
+  archivosEliminados: number;
+};
+
+/** Irreversible: borra al operador con sus versiones, publicaciones, imágenes, calificaciones, enlaces y suscripción. */
+export const eliminarOperador = (id: number) => pedir<OperadorEliminado>("DELETE", `/api/admin/operators/${id}`);

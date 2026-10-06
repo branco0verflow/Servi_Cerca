@@ -6,6 +6,7 @@ import { ArrowLeft, Check, Copy, ImageOff, Link2, MessageCircle, Star, X } from 
 import { toast } from "sonner";
 
 import { useAdminError } from "@/components/admin/admin-shell";
+import { EliminarOperador } from "@/components/admin/eliminar-operador";
 import { SuscripcionTarjeta } from "@/components/admin/suscripcion-tarjeta";
 import { EstadoOperadorBadge, fecha } from "@/components/admin/operadores-section";
 import {
@@ -323,6 +324,11 @@ export function OperadorDetalleSection({ id }: { id: number }) {
           </ul>
         </Tarjeta>
       )}
+
+      <EliminarOperador
+        operadorId={id}
+        nombre={contacto ? `${contacto.nombre} ${contacto.apellido}` : `el operador ${id}`}
+      />
 
       <AlertDialog open={confirmando !== null} onOpenChange={(open) => !open && !procesando && setConfirmando(null)}>
         <AlertDialogContent>
