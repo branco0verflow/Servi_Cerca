@@ -41,6 +41,8 @@ export type RegistroDatos = {
   trabajoRemoto: boolean;
   localidadIds: number[];
   oficios: OficioOfrecido[];
+  /** "No encuentro mi trabajo": a qué se dedica, para que el administrador le asigne uno. */
+  trabajoNoEncontrado: string | null;
   publicaciones: PublicacionDatos[];
   /** Aceptación de los Términos y la Política de privacidad; el backend la exige en el registro. */
   aceptaTerminos: boolean;

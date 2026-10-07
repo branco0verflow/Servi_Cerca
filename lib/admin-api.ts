@@ -215,6 +215,8 @@ export type VersionDetalle = {
   trabajoRemoto: boolean;
   localidades: { id: number; nombre: string; departamento: string }[];
   oficios: OficioOfrecido[];
+  /** "No encuentro mi trabajo": lo que el operador contó que hace. */
+  trabajoNoEncontrado: string | null;
   publicaciones: Publicacion[];
   fechaEnvioRevision: string | null;
 };
@@ -269,6 +271,9 @@ export const aprobarVersion = (versionId: number) =>
   pedir<VersionRevision>("POST", `/api/admin/operator-versions/${versionId}/approve`);
 export const rechazarVersion = (versionId: number, motivo: string) =>
   pedir<VersionRevision>("POST", `/api/admin/operator-versions/${versionId}/reject`, { motivo });
+/** Agrega un trabajo a una versión pendiente (para quien no encontró el suyo al registrarse). */
+export const asignarTrabajo = (versionId: number, oficioId: number) =>
+  pedir<VersionRevision>("POST", `/api/admin/operator-versions/${versionId}/trades`, { oficioId });
 export const suspenderOperador = (id: number) => pedir<OperadorDetalle>("POST", `/api/admin/operators/${id}/suspend`);
 export const reactivarOperador = (id: number) =>
   pedir<OperadorDetalle>("POST", `/api/admin/operators/${id}/reactivate`);

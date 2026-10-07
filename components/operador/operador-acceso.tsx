@@ -236,6 +236,7 @@ function aValoresIniciales(borrador: Borrador): ValoresIniciales {
     trabajoRemoto: borrador.trabajoRemoto,
     localidadIds: borrador.localidades.map((l) => l.id),
     oficios: borrador.oficios,
+    trabajoNoEncontrado: borrador.trabajoNoEncontrado,
     fotoPerfilUrl: borrador.fotoPerfilUrl,
     publicaciones: borrador.publicaciones,
   };

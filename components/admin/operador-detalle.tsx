@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { NativeSelect, NativeSelectOptGroup, NativeSelectOption } from "@/components/ui/native-select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,9 +40,12 @@ import {
   Diferencias,
   EnlaceEdicion,
   OperadorDetalle,
+  Trabajo,
   VersionDetalle,
   VersionRevision,
   aprobarVersion,
+  asignarTrabajo,
+  listarTrabajos,
   obtenerOperador,
   obtenerRevision,
   generarEnlaceEdicion,
@@ -60,6 +64,7 @@ const ETIQUETAS_CAMPO: Record<string, string> = {
   telefono: "Teléfono",
   whatsapp: "WhatsApp",
   trabajoRemoto: "Trabajo remoto",
+  trabajoNoEncontrado: "No encontró su trabajo",
   fotoPerfil: "Foto de perfil",
 };
 
@@ -157,6 +162,8 @@ export function OperadorDetalleSection({ id }: { id: number }) {
   const cambiosAprobados = !cambiosRechazados && (detalle.versionPublicada?.numeroVersion ?? 1) > 1;
   // El registro inicial no se puede aprobar sin una suscripción vigente (el backend también lo exige).
   const faltaSuscripcion = pendiente?.esRegistroInicial === true && detalle.suscripcion.estado !== "ACTIVA";
+  // Quien no encontró su trabajo puede llegar sin ninguno: hay que asignarle uno antes de aprobar.
+  const faltaTrabajo = pendiente !== null && !pendiente.versionSolicitada.oficios.some((o) => o.activo);
 
   return (
     <section>
@@ -227,7 +234,7 @@ export function OperadorDetalleSection({ id }: { id: number }) {
               <Button variant="outline" onClick={() => setRechazando(true)} disabled={procesando}>
                 <X /> Rechazar
               </Button>
-              <Button onClick={() => setConfirmando("aprobar")} disabled={procesando || faltaSuscripcion}>
+              <Button onClick={() => setConfirmando("aprobar")} disabled={procesando || faltaSuscripcion || faltaTrabajo}>
                 <Check /> Aprobar
               </Button>
             </div>
@@ -236,6 +243,23 @@ export function OperadorDetalleSection({ id }: { id: number }) {
             <p className="mt-3 text-sm text-amber-600 dark:text-amber-400">
               Para aprobar el registro, primero definí el vencimiento de la suscripción (arriba).
             </p>
+          )}
+          {faltaTrabajo && (
+            <p className="mt-3 text-sm text-amber-600 dark:text-amber-400">
+              Para aprobar, primero asignale al menos un trabajo (abajo).
+            </p>
+          )}
+          {pendiente.versionSolicitada.trabajoNoEncontrado && (
+            <TrabajoNoEncontrado
+              version={pendiente.versionSolicitada}
+              procesando={procesando}
+              onAsignar={(oficioId, nombre) =>
+                ejecutar(
+                  () => asignarTrabajo(pendiente.versionSolicitada.versionId, oficioId),
+                  `Se le asignó el trabajo «${nombre}».`,
+                )
+              }
+            />
           )}
           {!pendiente.esRegistroInicial && pendiente.diferencias && (
             <div className="mt-4 border-t border-border pt-4 text-sm">
@@ -410,6 +434,91 @@ export function OperadorDetalleSection({ id }: { id: number }) {
   );
 }
 
+/**
+ * El operador marcó «No encuentro mi trabajo»: muestra lo que contó y permite asignarle un trabajo del
+ * catálogo. Si el trabajo no existe todavía, se crea antes en la sección Trabajos.
+ */
+function TrabajoNoEncontrado({
+  version,
+  procesando,
+  onAsignar,
+}: {
+  version: VersionDetalle;
+  procesando: boolean;
+  onAsignar: (oficioId: number, nombre: string) => void;
+}) {
+  const manejarError = useAdminError();
+  const [trabajos, setTrabajos] = useState<Trabajo[] | null>(null);
+  const [elegido, setElegido] = useState("");
+
+  useEffect(() => {
+    let vigente = true;
+    listarTrabajos()
+      .then((lista) => vigente && setTrabajos(lista))
+      .catch(manejarError);
+    return () => {
+      vigente = false;
+    };
+  }, [manejarError]);
+
+  // Solo los que se pueden ofrecer y que todavía no tiene, agrupados por tipo.
+  const yaOfrece = new Set(version.oficios.map((o) => o.oficioId));
+  const porTipo = new Map<string, Trabajo[]>();
+  for (const t of trabajos ?? []) {
+    if (!t.activo || !t.categoriaActiva || yaOfrece.has(t.id)) continue;
+    porTipo.set(t.categoria.nombre, [...(porTipo.get(t.categoria.nombre) ?? []), t]);
+  }
+  const grupos = [...porTipo.entries()].sort(([a], [b]) => a.localeCompare(b, "es"));
+  const trabajoElegido = trabajos?.find((t) => String(t.id) === elegido);
+
+  return (
+    <div className="mt-4 border-t border-border pt-4">
+      <p className="text-sm font-semibold">No encontró su trabajo en la lista</p>
+      <p className="mt-1 text-sm text-muted-foreground">Esto es lo que contó sobre a qué se dedica:</p>
+      <blockquote className="mt-2 rounded-md border-l-2 border-primary bg-secondary/50 px-4 py-3 text-sm whitespace-pre-line">
+        {version.trabajoNoEncontrado}
+      </blockquote>
+      <p className="mt-3 text-sm text-muted-foreground">
+        Asignale el trabajo que corresponda. Si todavía no existe,{" "}
+        <Link href="/maite/trabajos" className="font-medium text-foreground underline underline-offset-4">
+          crealo en Trabajos
+        </Link>{" "}
+        y volvé a esta página.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <NativeSelect
+          aria-label="Trabajo a asignar"
+          value={elegido}
+          onChange={(e) => setElegido(e.target.value)}
+          disabled={procesando || trabajos === null}
+        >
+          <NativeSelectOption value="">{trabajos === null ? "Cargando trabajos…" : "Elegí un trabajo…"}</NativeSelectOption>
+          {grupos.map(([tipo, lista]) => (
+            <NativeSelectOptGroup key={tipo} label={tipo}>
+              {lista.map((t) => (
+                <NativeSelectOption key={t.id} value={t.id}>
+                  {t.nombre}
+                </NativeSelectOption>
+              ))}
+            </NativeSelectOptGroup>
+          ))}
+        </NativeSelect>
+        <Button
+          variant="outline"
+          disabled={procesando || !trabajoElegido}
+          onClick={() => {
+            if (!trabajoElegido) return;
+            onAsignar(trabajoElegido.id, trabajoElegido.nombre);
+            setElegido("");
+          }}
+        >
+          Asignar trabajo
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function DatosVersion({ datos }: { datos: VersionDetalle }) {
   return (
     <div className="space-y-6">
@@ -437,6 +546,7 @@ function DatosVersion({ datos }: { datos: VersionDetalle }) {
 
       <Tarjeta>
         <h2 className="mb-3 font-semibold">Trabajos que ofrece</h2>
+        {datos.oficios.length === 0 && <p className="text-sm text-muted-foreground">No eligió ningún trabajo.</p>}
         <ul className="divide-y divide-border text-sm">
           {datos.oficios.map((o) => (
             <li key={o.oficioId} className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-2.5">

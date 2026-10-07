@@ -34,6 +34,7 @@ export type Borrador = {
     precioDesde: number | null;
     moneda: Moneda | null;
   }[];
+  trabajoNoEncontrado: string | null;
   publicaciones: BorradorPublicacion[];
 };
 

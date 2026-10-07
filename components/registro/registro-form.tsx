@@ -2,8 +2,10 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, Clock3, ImagePlus, Laptop, Plus, Trash2, TriangleAlert, X } from "lucide-react";
+import { ArrowRight, Check, Clock3, ImagePlus, Laptop, Plus, Search, Trash2, TriangleAlert, X } from "lucide-react";
 
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -31,6 +33,7 @@ import {
 // Límites del backend (RegistroOperadorRequest e ImageValidator).
 const MAX_OFICIOS = 10;
 const MAX_PUBLICACIONES = 5;
+const MAX_TRABAJO_NO_ENCONTRADO = 300;
 const MAX_IMAGEN_BYTES = 5 * 1024 * 1024;
 const TIPOS_IMAGEN = ["image/jpeg", "image/png", "image/webp"];
 const ACEPTA_IMAGEN = TIPOS_IMAGEN.join(",");
@@ -72,6 +75,7 @@ export type ValoresIniciales = {
   trabajoRemoto: boolean;
   localidadIds: number[];
   oficios: { oficioId: number; descripcionServicio: string | null; precioDesde: number | null; moneda: Moneda | null }[];
+  trabajoNoEncontrado: string | null;
   fotoPerfilUrl: string | null;
   publicaciones: (PublicacionDatos & { id: number; imagenUrl: string | null })[];
 };
@@ -100,6 +104,77 @@ type Props = {
   /** Envía los datos. Si lanza PublicApiError, el formulario muestra su mensaje. */
   enviar: (valores: ValoresFormulario) => Promise<void>;
 };
+
+/** Para comparar nombres sin importar mayúsculas ni tildes. */
+function sinTildes(texto: string) {
+  return texto
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
+/** Un trabajo del catálogo: la casilla y, si está elegido, qué ofrece y desde qué precio. */
+function FilaOficio({
+  oficio,
+  datos,
+  bloqueado,
+  mostrarTipo = false,
+  error,
+  enviando,
+  onAlternar,
+  onEditar,
+}: {
+  oficio: Oficio;
+  datos: OficioElegido | undefined;
+  bloqueado: boolean;
+  /** En los resultados de la búsqueda se aclara a qué tipo pertenece. */
+  mostrarTipo?: boolean;
+  error: string | undefined;
+  enviando: boolean;
+  onAlternar: (marcado: boolean) => void;
+  onEditar: (cambios: Partial<OficioElegido>) => void;
+}) {
+  return (
+    <div className={datos ? "rounded-md border border-border bg-secondary/40 p-4" : undefined}>
+      <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium sm:min-h-0">
+        <Checkbox
+          checked={!!datos}
+          onCheckedChange={(marcado) => onAlternar(marcado === true)}
+          disabled={enviando || bloqueado}
+        />
+        <span>
+          {oficio.nombre}
+          {mostrarTipo && <span className="ml-2 font-normal text-muted-foreground">{oficio.categoria.nombre}</span>}
+        </span>
+      </label>
+      {datos && (
+        <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_auto]" data-invalid={error ? true : undefined}>
+          <Field>
+            <FieldLabel htmlFor={`oficio-${oficio.id}-descripcion`}>Qué ofrecés (opcional)</FieldLabel>
+            <Input
+              id={`oficio-${oficio.id}-descripcion`}
+              maxLength={500}
+              value={datos.descripcionServicio}
+              onChange={(e) => onEditar({ descripcionServicio: e.target.value })}
+              placeholder="Ej. Instalaciones, tableros, urgencias"
+              disabled={enviando}
+            />
+          </Field>
+          <CampoPrecio
+            id={`oficio-${oficio.id}-precio`}
+            etiqueta="Precio desde (opcional)"
+            precio={datos.precioDesde}
+            moneda={datos.moneda}
+            onPrecio={(precioDesde) => onEditar({ precioDesde })}
+            onMoneda={(moneda) => onEditar({ moneda })}
+            error={error}
+            disabled={enviando}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 function publicacionesIniciales(inicial?: ValoresIniciales): PublicacionBorrador[] {
   return (inicial?.publicaciones ?? []).map((p, indice) => ({
@@ -143,6 +218,11 @@ export function OperadorFormulario({ inicial, avisoTitulo, avisoTexto, textoBoto
   const [trabajoRemoto, setTrabajoRemoto] = useState(inicial?.trabajoRemoto ?? false);
   const [localidadIds, setLocalidadIds] = useState<number[]>(inicial?.localidadIds ?? []);
   const [elegidos, setElegidos] = useState<Record<number, OficioElegido>>(() => oficiosIniciales(inicial));
+  // Tipos desplegados (null = todavía no se tocó: se abren los que ya tienen trabajos elegidos).
+  const [tiposAbiertos, setTiposAbiertos] = useState<string[] | null>(null);
+  const [busquedaOficio, setBusquedaOficio] = useState("");
+  const [noEncuentro, setNoEncuentro] = useState(!!inicial?.trabajoNoEncontrado);
+  const [trabajoNoEncontrado, setTrabajoNoEncontrado] = useState(inicial?.trabajoNoEncontrado ?? "");
   const [fotoPerfil, setFotoPerfil] = useState<File | null>(null);
   const [fotoQuitada, setFotoQuitada] = useState(false);
   const [publicaciones, setPublicaciones] = useState<PublicacionBorrador[]>(() => publicacionesIniciales(inicial));
@@ -176,6 +256,23 @@ export function OperadorFormulario({ inicial, avisoTitulo, avisoTexto, textoBoto
   }, [oficios]);
 
   const cantidadElegidos = Object.keys(elegidos).length;
+  const tiposConElegidos = grupos.filter(([, lista]) => lista.some((o) => elegidos[o.id])).map(([tipo]) => tipo);
+  const abiertos = tiposAbiertos ?? tiposConElegidos;
+  const textoBuscado = sinTildes(busquedaOficio.trim());
+  const coincidencias = textoBuscado
+    ? (oficios ?? [])
+        .filter((o) => sinTildes(o.nombre).includes(textoBuscado))
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"))
+    : null;
+
+  function quitarError(campo: string) {
+    setErrores((actual) => {
+      if (!(campo in actual)) return actual;
+      const resto = { ...actual };
+      delete resto[campo];
+      return resto;
+    });
+  }
 
   function alternarLocalidad(id: number, marcada: boolean) {
     setLocalidadIds((actual) => (marcada ? [...actual, id] : actual.filter((x) => x !== id)));
@@ -223,7 +320,12 @@ export function OperadorFormulario({ inicial, avisoTitulo, avisoTexto, textoBoto
     if (!trabajoRemoto && localidadIds.length === 0) {
       e.localidadIds = "Elegí al menos una localidad o marcá que trabajás de forma remota.";
     }
-    if (cantidadElegidos === 0) e.oficios = "Elegí al menos un trabajo.";
+    if (cantidadElegidos === 0 && !noEncuentro) {
+      e.oficios = "Elegí al menos un trabajo. Si no está en la lista, marcá «No encuentro mi trabajo».";
+    }
+    if (noEncuentro && !trabajoNoEncontrado.trim()) {
+      e.trabajoNoEncontrado = "Contanos brevemente a qué te dedicás.";
+    }
     if (cantidadElegidos > MAX_OFICIOS) e.oficios = `Podés elegir hasta ${MAX_OFICIOS} trabajos.`;
     for (const [id, datos] of Object.entries(elegidos)) {
       if (datos.precioDesde.trim() && aNumero(datos.precioDesde) === null) {
@@ -260,6 +362,9 @@ export function OperadorFormulario({ inicial, avisoTitulo, avisoTexto, textoBoto
     setErrores(encontrados);
     if (Object.keys(encontrados).length > 0) {
       setErrorGeneral("Revisá los campos marcados antes de enviar.");
+      // Un error puede estar dentro de un tipo plegado o tapado por la búsqueda: se deja todo a la vista.
+      setBusquedaOficio("");
+      setTiposAbiertos([...new Set([...abiertos, ...tiposConElegidos])]);
       // Lleva al primer campo con error.
       requestAnimationFrame(() => {
         formRef.current?.querySelector("[data-invalid=true]")?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -287,6 +392,7 @@ export function OperadorFormulario({ inicial, avisoTitulo, avisoTexto, textoBoto
           moneda: precio === null ? null : o.moneda,
         };
       }),
+      trabajoNoEncontrado: noEncuentro ? trabajoNoEncontrado.trim() || null : null,
     };
 
     setEnviando(true);
@@ -414,62 +520,157 @@ export function OperadorFormulario({ inicial, avisoTitulo, avisoTexto, textoBoto
 
       <Seccion
         titulo="¿Qué trabajos ofrecés?"
-        descripcion={`Elegí hasta ${MAX_OFICIOS}. En cada uno podés contar qué hacés y desde qué precio.`}
+        descripcion={`Tocá un tipo de trabajo para ver sus opciones, o buscá el tuyo por nombre. Podés elegir hasta ${MAX_OFICIOS}.`}
       >
-        <div data-invalid={errores.oficios ? true : undefined} className="space-y-6">
+        <div data-invalid={errores.oficios ? true : undefined}>
           {oficios === null ? (
             <Skeleton className="h-40 w-full" />
           ) : (
-            grupos.map(([tipo, lista]) => (
-              <fieldset key={tipo}>
-                <legend className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{tipo}</legend>
-                <div className="space-y-1 sm:space-y-3">
-                  {lista.map((oficio) => {
-                    const datos = elegidos[oficio.id];
-                    const bloqueado = !datos && cantidadElegidos >= MAX_OFICIOS;
+            <>
+              <div className="relative mb-4">
+                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="search"
+                  className="h-11 pl-9"
+                  placeholder="Buscar trabajo, por ejemplo: albañil"
+                  aria-label="Buscar trabajo por nombre"
+                  value={busquedaOficio}
+                  onChange={(e) => setBusquedaOficio(e.target.value)}
+                  disabled={enviando}
+                />
+              </div>
+
+              {cantidadElegidos > 0 && (
+                <p className="mb-3 text-sm text-muted-foreground" aria-live="polite">
+                  {cantidadElegidos === 1 ? "1 trabajo elegido" : `${cantidadElegidos} trabajos elegidos`} de {MAX_OFICIOS}.
+                </p>
+              )}
+
+              {coincidencias ? (
+                coincidencias.length === 0 ? (
+                  <p className="py-3 text-sm text-muted-foreground">
+                    No hay trabajos que coincidan con «{busquedaOficio.trim()}». Probá con otra palabra o marcá «No
+                    encuentro mi trabajo» más abajo.
+                  </p>
+                ) : (
+                  <div className="space-y-1 sm:space-y-3">
+                    {coincidencias.map((oficio) => (
+                      <FilaOficio
+                        key={oficio.id}
+                        oficio={oficio}
+                        mostrarTipo
+                        datos={elegidos[oficio.id]}
+                        bloqueado={!elegidos[oficio.id] && cantidadElegidos >= MAX_OFICIOS}
+                        error={errores[`oficio-${oficio.id}`]}
+                        enviando={enviando}
+                        onAlternar={(marcado) => {
+                          alternarOficio(oficio.id, marcado);
+                          quitarError("oficios");
+                        }}
+                        onEditar={(cambios) => editarOficio(oficio.id, cambios)}
+                      />
+                    ))}
+                  </div>
+                )
+              ) : (
+                <Accordion
+                  type="multiple"
+                  value={abiertos}
+                  onValueChange={setTiposAbiertos}
+                  className="rounded-(--radius) border border-border"
+                >
+                  {grupos.map(([tipo, lista]) => {
+                    const elegidosDelTipo = lista.filter((o) => elegidos[o.id]).length;
                     return (
-                      <div key={oficio.id} className={datos ? "rounded-md border border-border bg-secondary/40 p-4" : undefined}>
-                        <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium sm:min-h-0">
-                          <Checkbox
-                            checked={!!datos}
-                            onCheckedChange={(marcado) => alternarOficio(oficio.id, marcado === true)}
-                            disabled={enviando || bloqueado}
-                          />
-                          {oficio.nombre}
-                        </label>
-                        {datos && (
-                          <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_auto]" data-invalid={errores[`oficio-${oficio.id}`] ? true : undefined}>
-                            <Field>
-                              <FieldLabel htmlFor={`oficio-${oficio.id}-descripcion`}>Qué ofrecés (opcional)</FieldLabel>
-                              <Input
-                                id={`oficio-${oficio.id}-descripcion`}
-                                maxLength={500}
-                                value={datos.descripcionServicio}
-                                onChange={(e) => editarOficio(oficio.id, { descripcionServicio: e.target.value })}
-                                placeholder="Ej. Instalaciones, tableros, urgencias"
-                                disabled={enviando}
+                      <AccordionItem key={tipo} value={tipo} className="px-4">
+                        <AccordionTrigger className="min-h-12 items-center py-3 text-base hover:no-underline">
+                          <span className="flex flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+                            {tipo}
+                            {elegidosDelTipo > 0 ? (
+                              <Badge>{elegidosDelTipo === 1 ? "1 elegido" : `${elegidosDelTipo} elegidos`}</Badge>
+                            ) : (
+                              <span className="text-sm font-normal text-muted-foreground">
+                                {lista.length === 1 ? "1 trabajo" : `${lista.length} trabajos`}
+                              </span>
+                            )}
+                          </span>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-1 sm:space-y-3">
+                            {lista.map((oficio) => (
+                              <FilaOficio
+                                key={oficio.id}
+                                oficio={oficio}
+                                datos={elegidos[oficio.id]}
+                                bloqueado={!elegidos[oficio.id] && cantidadElegidos >= MAX_OFICIOS}
+                                error={errores[`oficio-${oficio.id}`]}
+                                enviando={enviando}
+                                onAlternar={(marcado) => {
+                                  alternarOficio(oficio.id, marcado);
+                                  quitarError("oficios");
+                                }}
+                                onEditar={(cambios) => editarOficio(oficio.id, cambios)}
                               />
-                            </Field>
-                            <CampoPrecio
-                              id={`oficio-${oficio.id}-precio`}
-                              etiqueta="Precio desde (opcional)"
-                              precio={datos.precioDesde}
-                              moneda={datos.moneda}
-                              onPrecio={(precioDesde) => editarOficio(oficio.id, { precioDesde })}
-                              onMoneda={(moneda) => editarOficio(oficio.id, { moneda })}
-                              error={errores[`oficio-${oficio.id}`]}
-                              disabled={enviando}
-                            />
+                            ))}
                           </div>
-                        )}
-                      </div>
+                        </AccordionContent>
+                      </AccordionItem>
                     );
                   })}
-                </div>
-              </fieldset>
-            ))
+                </Accordion>
+              )}
+            </>
           )}
-          {errores.oficios && <FieldError>{errores.oficios}</FieldError>}
+          {errores.oficios && <FieldError className="mt-3">{errores.oficios}</FieldError>}
+        </div>
+
+        <div
+          data-invalid={errores.trabajoNoEncontrado ? true : undefined}
+          className={cn(
+            "mt-5 rounded-(--radius) border p-4 transition-colors",
+            noEncuentro ? "border-primary bg-primary/5" : "border-border",
+          )}
+        >
+          <label className="flex cursor-pointer items-start gap-3">
+            <Checkbox
+              className="mt-0.5"
+              checked={noEncuentro}
+              onCheckedChange={(marcada) => {
+                setNoEncuentro(marcada === true);
+                quitarError("oficios");
+                quitarError("trabajoNoEncontrado");
+              }}
+              disabled={enviando}
+            />
+            <span>
+              <span className="block text-sm font-medium">No encuentro mi trabajo</span>
+              <span className="mt-1 block text-sm text-muted-foreground">
+                Contanos a qué te dedicás y lo agregamos por vos al revisar tu registro.
+              </span>
+            </span>
+          </label>
+          {noEncuentro && (
+            <Field className="mt-4">
+              <FieldLabel htmlFor="trabajoNoEncontrado">¿A qué te dedicás?</FieldLabel>
+              <Textarea
+                id="trabajoNoEncontrado"
+                rows={3}
+                maxLength={MAX_TRABAJO_NO_ENCONTRADO}
+                value={trabajoNoEncontrado}
+                onChange={(e) => {
+                  setTrabajoNoEncontrado(e.target.value);
+                  quitarError("trabajoNoEncontrado");
+                }}
+                placeholder="Ej. Soy tapicero: retapizo sillones y sillas."
+                aria-invalid={errores.trabajoNoEncontrado ? true : undefined}
+                disabled={enviando}
+              />
+              <FieldDescription>
+                {trabajoNoEncontrado.length}/{MAX_TRABAJO_NO_ENCONTRADO} · Solo lo ve quien revisa tu registro.
+              </FieldDescription>
+              {errores.trabajoNoEncontrado && <FieldError>{errores.trabajoNoEncontrado}</FieldError>}
+            </Field>
+          )}
         </div>
       </Seccion>
 
