@@ -59,6 +59,7 @@ const ETIQUETAS_CAMPO: Record<string, string> = {
   email: "Email",
   telefono: "Teléfono",
   whatsapp: "WhatsApp",
+  trabajoRemoto: "Trabajo remoto",
   fotoPerfil: "Foto de perfil",
 };
 
@@ -419,7 +420,14 @@ function DatosVersion({ datos }: { datos: VersionDetalle }) {
             <Dato etiqueta="Email" valor={datos.email} />
             <Dato etiqueta="Teléfono" valor={datos.telefono} />
             <Dato etiqueta="WhatsApp" valor={`+${datos.whatsapp}`} />
-            <Dato etiqueta="Localidades" valor={datos.localidades.map((l) => l.nombre).join(", ") || "—"} />
+            <Dato
+              etiqueta="Localidades"
+              valor={
+                datos.trabajoRemoto
+                  ? "Trabajo remoto (aparece en todas)"
+                  : datos.localidades.map((l) => l.nombre).join(", ") || "—"
+              }
+            />
             <div className="sm:col-span-2">
               <Dato etiqueta="Descripción" valor={datos.descripcion || "—"} />
             </div>

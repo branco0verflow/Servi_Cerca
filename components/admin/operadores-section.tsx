@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Users } from "lucide-react";
+import { Search, Users } from "lucide-react";
 
 import { useAdminError } from "@/components/admin/admin-shell";
 import { Paginador } from "@/components/admin/paginador";
@@ -15,6 +15,7 @@ import {
 import { TablaCargando } from "@/components/admin/tipos-section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -65,6 +66,20 @@ export function OperadoresSection() {
   const [estado, setEstado] = useState<EstadoOperador | null>(null);
   const [pagina, setPagina] = useState(0);
   const [operadores, setOperadores] = useState<Pagina<OperadorResumen> | null>(null);
+  // Lo que está escrito en el buscador y, con una pausa para no consultar en cada tecla, lo que se busca.
+  const [texto, setTexto] = useState("");
+  const [busqueda, setBusqueda] = useState("");
+
+  useEffect(() => {
+    const limpio = texto.trim();
+    const espera = setTimeout(() => {
+      if (limpio === busqueda) return;
+      setOperadores(null);
+      setPagina(0);
+      setBusqueda(limpio);
+    }, 300);
+    return () => clearTimeout(espera);
+  }, [texto, busqueda]);
 
   useEffect(() => {
     let vigente = true;
@@ -100,13 +115,13 @@ export function OperadoresSection() {
   useEffect(() => {
     if (vista !== "todos") return;
     let vigente = true;
-    listarOperadores(estado, pagina)
+    listarOperadores(estado, pagina, busqueda)
       .then((respuesta) => vigente && setOperadores(respuesta))
       .catch(manejarError);
     return () => {
       vigente = false;
     };
-  }, [vista, estado, pagina, manejarError]);
+  }, [vista, estado, pagina, busqueda, manejarError]);
 
   const totalSuscripciones = (porVencer?.totalElements ?? 0) + (vencidas?.totalElements ?? 0);
   const suscripciones = tipoSuscripcion === "porVencer" ? porVencer : vencidas;
@@ -120,6 +135,23 @@ export function OperadoresSection() {
         <p className="mt-1 text-sm text-muted-foreground">
           Revisá las solicitudes de registro y administrá los perfiles publicados.
         </p>
+      </div>
+
+      {/* Buscar lleva a "Todos": se busca entre todos los operadores, sin importar su estado. */}
+      <div className="relative mb-4 max-w-md">
+        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="search"
+          placeholder="Buscar por nombre y apellido o WhatsApp…"
+          aria-label="Buscar operador por nombre y apellido o WhatsApp"
+          className="pl-9"
+          maxLength={80}
+          value={texto}
+          onChange={(e) => {
+            setTexto(e.target.value);
+            if (e.target.value.trim()) setVista("todos");
+          }}
+        />
       </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -290,7 +322,14 @@ export function OperadoresSection() {
         (operadores === null ? (
           <TablaCargando />
         ) : operadores.content.length === 0 ? (
-          <Vacio titulo="No hay operadores" descripcion="No se encontraron operadores con ese estado." />
+          <Vacio
+            titulo={busqueda ? "Sin resultados" : "No hay operadores"}
+            descripcion={
+              busqueda
+                ? `No se encontró ningún operador que coincida con "${busqueda}"${estado ? " en ese estado" : ""}.`
+                : "No se encontraron operadores con ese estado."
+            }
+          />
         ) : (
           <>
             <div className="overflow-x-auto rounded-(--radius) border border-border">

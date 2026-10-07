@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ImageOff, MapPin, MessageCircle, Phone, ShieldCheck, Star } from "lucide-react";
+import { ArrowLeft, ImageOff, Laptop, MapPin, MessageCircle, Phone, ShieldCheck, Star } from "lucide-react";
 
 import { PieLegal } from "@/components/legal/documento-legal";
 import { CalificarOperador } from "@/components/profesional/calificar-operador";
@@ -244,7 +244,14 @@ function Encabezado({
   localidad: string | null;
 }) {
   const [fotoRota, setFotoRota] = useState(false);
-  const pedido = servicio && localidad ? ` Necesito ${servicio.toLowerCase()} en ${localidad}.` : "";
+  // A quien trabaja de forma remota no se le nombra la localidad: no hace falta que esté ahí.
+  const pedido = !servicio
+    ? ""
+    : operador.trabajoRemoto
+      ? ` Necesito ${servicio.toLowerCase()}.`
+      : localidad
+        ? ` Necesito ${servicio.toLowerCase()} en ${localidad}.`
+        : "";
   const mensaje = encodeURIComponent(
     `Hola ${operador.nombre}, te encontré en Servi Cerca.${pedido} ¿Podemos coordinar?`,
   );
@@ -293,8 +300,17 @@ function Encabezado({
               )}
             </span>
             <span className="flex items-center gap-1.5">
-              <MapPin className="size-4" />
-              {operador.localidades.map((l) => l.nombre).join(", ")}
+              {operador.trabajoRemoto ? (
+                <>
+                  <Laptop className="size-4" />
+                  Trabajo remoto · todas las localidades
+                </>
+              ) : (
+                <>
+                  <MapPin className="size-4" />
+                  {operador.localidades.map((l) => l.nombre).join(", ")}
+                </>
+              )}
             </span>
           </div>
 

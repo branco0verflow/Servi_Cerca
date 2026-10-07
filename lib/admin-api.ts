@@ -212,6 +212,7 @@ export type VersionDetalle = {
   telefono: string;
   whatsapp: string;
   fotoPerfilUrl: string | null;
+  trabajoRemoto: boolean;
   localidades: { id: number; nombre: string; departamento: string }[];
   oficios: OficioOfrecido[];
   publicaciones: Publicacion[];
@@ -254,8 +255,13 @@ export type OperadorDetalle = {
 
 export const listarVersionesPendientes = (page: number) =>
   pedir<Pagina<VersionPendiente>>("GET", `/api/admin/operator-versions?estado=PENDIENTE_REVISION&size=20&page=${page}`);
-export const listarOperadores = (estado: EstadoOperador | null, page: number) =>
-  pedir<Pagina<OperadorResumen>>("GET", `/api/admin/operators?size=20&page=${page}${estado ? `&estado=${estado}` : ""}`);
+/** `busqueda` filtra por nombre y apellido, nombre comercial o número de WhatsApp. */
+export const listarOperadores = (estado: EstadoOperador | null, page: number, busqueda = "") => {
+  const parametros = new URLSearchParams({ size: "20", page: String(page) });
+  if (estado) parametros.set("estado", estado);
+  if (busqueda) parametros.set("q", busqueda);
+  return pedir<Pagina<OperadorResumen>>("GET", `/api/admin/operators?${parametros}`);
+};
 export const obtenerOperador = (id: number) => pedir<OperadorDetalle>("GET", `/api/admin/operators/${id}`);
 export const obtenerRevision = (versionId: number) =>
   pedir<VersionRevision>("GET", `/api/admin/operator-versions/${versionId}`);

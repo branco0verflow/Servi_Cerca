@@ -26,6 +26,7 @@ export type Borrador = {
   telefono: string;
   whatsapp: string;
   fotoPerfilUrl: string | null;
+  trabajoRemoto: boolean;
   localidades: { id: number; nombre: string }[];
   oficios: {
     oficioId: number;

@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, Clock3, ImagePlus, Plus, Trash2, TriangleAlert, X } from "lucide-react";
+import { ArrowRight, Check, Clock3, ImagePlus, Laptop, Plus, Trash2, TriangleAlert, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,6 +12,7 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { RUTA_PRIVACIDAD, RUTA_TERMINOS } from "@/lib/legal";
 import {
   Localidad,
@@ -68,6 +69,7 @@ export type ValoresIniciales = {
   email: string;
   telefono: string;
   whatsapp: string;
+  trabajoRemoto: boolean;
   localidadIds: number[];
   oficios: { oficioId: number; descripcionServicio: string | null; precioDesde: number | null; moneda: Moneda | null }[];
   fotoPerfilUrl: string | null;
@@ -138,6 +140,7 @@ export function OperadorFormulario({ inicial, avisoTitulo, avisoTexto, textoBoto
   const [telefono, setTelefono] = useState(inicial?.telefono ?? "");
   const [whatsapp, setWhatsapp] = useState(inicial?.whatsapp ?? "");
   const [descripcion, setDescripcion] = useState(inicial?.descripcion ?? "");
+  const [trabajoRemoto, setTrabajoRemoto] = useState(inicial?.trabajoRemoto ?? false);
   const [localidadIds, setLocalidadIds] = useState<number[]>(inicial?.localidadIds ?? []);
   const [elegidos, setElegidos] = useState<Record<number, OficioElegido>>(() => oficiosIniciales(inicial));
   const [fotoPerfil, setFotoPerfil] = useState<File | null>(null);
@@ -217,7 +220,9 @@ export function OperadorFormulario({ inicial, avisoTitulo, avisoTexto, textoBoto
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) e.email = "Ingresá un email válido.";
     if (!/^[0-9+()\s.-]{6,30}$/.test(telefono.trim())) e.telefono = "Ingresá un teléfono válido.";
     if (!esCelularUruguayo(whatsapp)) e.whatsapp = "Ingresá un celular uruguayo, por ejemplo 099 123 456.";
-    if (localidadIds.length === 0) e.localidadIds = "Elegí al menos una localidad.";
+    if (!trabajoRemoto && localidadIds.length === 0) {
+      e.localidadIds = "Elegí al menos una localidad o marcá que trabajás de forma remota.";
+    }
     if (cantidadElegidos === 0) e.oficios = "Elegí al menos un trabajo.";
     if (cantidadElegidos > MAX_OFICIOS) e.oficios = `Podés elegir hasta ${MAX_OFICIOS} trabajos.`;
     for (const [id, datos] of Object.entries(elegidos)) {
@@ -270,7 +275,9 @@ export function OperadorFormulario({ inicial, avisoTitulo, avisoTexto, textoBoto
       email: email.trim(),
       telefono: telefono.trim(),
       whatsapp: whatsapp.trim(),
-      localidadIds,
+      trabajoRemoto,
+      // En remoto no se eligen localidades: el perfil aparece en todas.
+      localidadIds: trabajoRemoto ? [] : localidadIds,
       oficios: Object.entries(elegidos).map(([id, o]) => {
         const precio = aNumero(o.precioDesde);
         return {
@@ -351,9 +358,41 @@ export function OperadorFormulario({ inicial, avisoTitulo, avisoTexto, textoBoto
         </FieldGroup>
       </Seccion>
 
-      <Seccion titulo="¿Dónde trabajás?" descripcion="Elegí todas las localidades en las que ofrecés tus servicios.">
+      <Seccion
+        titulo="¿Dónde trabajás?"
+        descripcion="Elegí todas las localidades en las que ofrecés tus servicios. Si trabajás a distancia, marcá «Trabajo remoto»."
+      >
+        <label
+          className={cn(
+            "mb-4 flex cursor-pointer items-start gap-3 rounded-(--radius) border p-4 transition-colors",
+            trabajoRemoto ? "border-primary bg-primary/5" : "border-border",
+          )}
+        >
+          <Checkbox
+            className="mt-0.5"
+            checked={trabajoRemoto}
+            onCheckedChange={(marcada) => {
+              setTrabajoRemoto(marcada === true);
+              setErrores((actual) => {
+                const resto = { ...actual };
+                delete resto.localidadIds;
+                return resto;
+              });
+            }}
+            disabled={enviando}
+          />
+          <span>
+            <span className="flex items-center gap-2 text-sm font-medium">
+              <Laptop className="size-4" /> Trabajo remoto
+            </span>
+            <span className="mt-1 block text-sm text-muted-foreground">
+              Ofrezco mis servicios a distancia. Mi perfil aparece en todas las localidades, sin importar el
+              departamento.
+            </span>
+          </span>
+        </label>
         <div data-invalid={errores.localidadIds ? true : undefined}>
-          {localidades === null ? (
+          {trabajoRemoto ? null : localidades === null ? (
             <Skeleton className="h-24 w-full" />
           ) : (
             <div className="grid gap-1 sm:grid-cols-2 sm:gap-3">

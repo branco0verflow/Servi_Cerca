@@ -8,6 +8,7 @@ import {
   ArrowRight,
   BriefcaseBusiness,
   ChevronDown,
+  Laptop,
   MapPin,
   MessageCircle,
   Moon,
@@ -106,7 +107,8 @@ function ProfessionalCard({
 }) {
   const { oficio } = professional;
   const message = encodeURIComponent(
-    `Hola ${professional.nombre}, te encontré en Servi Cerca. Necesito ${oficio.nombre.toLowerCase()} en ${location}. ¿Podemos coordinar?`,
+    // A quien trabaja de forma remota no se le nombra la localidad: no hace falta que esté ahí.
+    `Hola ${professional.nombre}, te encontré en Servi Cerca. Necesito ${oficio.nombre.toLowerCase()}${professional.trabajoRemoto ? "" : ` en ${location}`}. ¿Podemos coordinar?`,
   );
   const descripcion = oficio.descripcionServicio || professional.descripcionBreve;
   const [fotoRota, setFotoRota] = useState(false);
@@ -157,6 +159,11 @@ function ProfessionalCard({
                   <span>Sin reseñas todavía</span>
                 )}
               </div>
+              {professional.trabajoRemoto && (
+                <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Laptop className="size-4" /> Trabajo remoto
+                </div>
+              )}
             </div>
             <span className="verified-badge">
               <ShieldCheck className="size-3.5" /> Verificado

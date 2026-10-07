@@ -37,6 +37,8 @@ export type RegistroDatos = {
   email: string;
   telefono: string;
   whatsapp: string;
+  /** Trabaja a distancia: no elige localidades y aparece en las búsquedas de todas. */
+  trabajoRemoto: boolean;
   localidadIds: number[];
   oficios: OficioOfrecido[];
   publicaciones: PublicacionDatos[];
@@ -128,6 +130,7 @@ export type OperadorResumen = {
     precioDesde: number | null;
     moneda: Moneda | null;
   };
+  trabajoRemoto: boolean;
   calificacionPromedio: number | null;
   cantidadCalificaciones: number;
 };
@@ -174,6 +177,7 @@ export type OperadorPublico = {
   telefono: string;
   whatsapp: string;
   oficios: OficioPublico[];
+  trabajoRemoto: boolean;
   localidades: Localidad[];
   publicaciones: PublicacionPublica[];
   calificacionPromedio: number | null;

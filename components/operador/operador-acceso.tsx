@@ -233,6 +233,7 @@ function aValoresIniciales(borrador: Borrador): ValoresIniciales {
     telefono: borrador.telefono,
     // El backend guarda 598XXXXXXXX; se muestra con + para que se lea como número internacional.
     whatsapp: `+${borrador.whatsapp}`,
+    trabajoRemoto: borrador.trabajoRemoto,
     localidadIds: borrador.localidades.map((l) => l.id),
     oficios: borrador.oficios,
     fotoPerfilUrl: borrador.fotoPerfilUrl,
