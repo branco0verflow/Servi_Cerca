@@ -676,7 +676,23 @@ export default function Home() {
             aria-label="Desarrollado por Brander Cloud (se abre en una pestaña nueva)"
           >
             <span>Desarrollado por</span>
-            <Image src="/images/brander.png" alt="Brander Cloud" width={1200} height={630} sizes="224px" />
+            {/* Un logo por tema; el CSS muestra el que corresponde, así no parpadea al cargar. */}
+            <Image
+              src="/images/brander.png"
+              alt="Brander Cloud"
+              width={1200}
+              height={630}
+              sizes="224px"
+              className="developer-logo-dark"
+            />
+            <Image
+              src="/images/brander_white.png"
+              alt="Brander Cloud"
+              width={2172}
+              height={724}
+              sizes="224px"
+              className="developer-logo-light"
+            />
           </a>
         </div>
       </footer>
