@@ -223,7 +223,8 @@ footer .brand { transform: scale(.88); transform-origin: left center; }
 .developer-credit:hover img { opacity: 1; }
 /* El logo negro casi no trae margen: se achica para que se vea del mismo tamaño que el blanco. */
 .developer-credit .developer-logo-light { display: none; width: 100px; }
-[data-theme="light"] .developer-credit .developer-logo-light { display: block; }
+/* !important: le gana al display:none que el logo trae en línea desde el HTML. */
+[data-theme="light"] .developer-credit .developer-logo-light { display: block !important; }
 [data-theme="light"] .developer-credit .developer-logo-dark { display: none; }
 
 @media (max-width: 920px) {

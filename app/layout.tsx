@@ -34,7 +34,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" data-theme="dark">
+    // suppressHydrationWarning: el tema guardado y las extensiones del navegador cambian atributos de <html>.
+    <html lang="es" data-theme="dark" suppressHydrationWarning>
       <body>{children}</body>
     </html>
   );

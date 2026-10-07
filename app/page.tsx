@@ -692,6 +692,8 @@ export default function Home() {
               height={724}
               sizes="224px"
               className="developer-logo-light"
+              // Oculto desde el HTML: si el CSS llega viejo o no carga, igual se ve un solo logo.
+              style={{ display: "none" }}
             />
           </a>
         </div>
