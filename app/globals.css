@@ -216,6 +216,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .registration-form textarea { resize: vertical; }
 footer { border-top: 1px solid var(--border); }
 footer .brand { transform: scale(.88); transform-origin: left center; }
+/* Crédito del desarrollador. El logo es blanco: en el tema claro va sobre una pastilla oscura para que se vea. */
+.developer-credit { display: flex; width: fit-content; margin-inline: auto; align-items: center; gap: .6rem; color: var(--muted-foreground); font-size: .78rem; transition: color .2s, opacity .2s; }
+.developer-credit:hover { color: var(--foreground); }
+.developer-credit img { width: 112px; height: auto; border-radius: 8px; opacity: .85; transition: opacity .2s; }
+.developer-credit:hover img { opacity: 1; }
+[data-theme="light"] .developer-credit img { background: #0b1718; opacity: 1; }
 
 @media (max-width: 920px) {
   .professionals-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

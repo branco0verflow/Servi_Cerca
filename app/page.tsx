@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import gsap from "gsap";
@@ -206,8 +206,31 @@ function ProfessionalCard({
   );
 }
 
+type Tema = "dark" | "light";
+const TEMA_KEY = "servi-cerca-theme";
+const TEMA_EVENTO = "servi-cerca-theme-change";
+
+// El tema elegido vive en localStorage; el componente lo lee como un dato externo (sin estado propio).
+function suscribirTema(avisar: () => void) {
+  window.addEventListener(TEMA_EVENTO, avisar);
+  window.addEventListener("storage", avisar);
+  return () => {
+    window.removeEventListener(TEMA_EVENTO, avisar);
+    window.removeEventListener("storage", avisar);
+  };
+}
+
+function temaGuardado(): Tema {
+  try {
+    return window.localStorage.getItem(TEMA_KEY) === "light" ? "light" : "dark";
+  } catch {
+    return "dark";
+  }
+}
+
 export default function Home() {
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  // En el servidor (y en el primer render) siempre es el tema oscuro, igual que el HTML inicial.
+  const theme = useSyncExternalStore<Tema>(suscribirTema, temaGuardado, () => "dark");
   const [localidades, setLocalidades] = useState<Localidad[]>([]);
   const [oficios, setOficios] = useState<Oficio[] | null>(null);
   const [localidadElegida, setLocalidadElegida] = useState<number | null>(null);
@@ -285,11 +308,10 @@ export default function Home() {
   }, [localidadId, oficioId]);
 
   useEffect(() => {
-    const savedTheme = window.localStorage.getItem("servi-cerca-theme");
-    const initialTheme = savedTheme === "light" ? "light" : "dark";
-    setTheme(initialTheme);
-    document.documentElement.dataset.theme = initialTheme;
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
 
+  useEffect(() => {
     const context = gsap.context(() => {
       gsap.from("[data-animate='intro']", {
         y: 24,
@@ -401,9 +423,12 @@ export default function Home() {
 
   function toggleTheme() {
     const nextTheme = theme === "dark" ? "light" : "dark";
-    setTheme(nextTheme);
-    document.documentElement.dataset.theme = nextTheme;
-    window.localStorage.setItem("servi-cerca-theme", nextTheme);
+    try {
+      window.localStorage.setItem(TEMA_KEY, nextTheme);
+    } catch {
+      // Sin almacenamiento (modo privado estricto): el cambio no se puede recordar.
+    }
+    window.dispatchEvent(new Event(TEMA_EVENTO));
   }
 
   // Los resultados quedan debajo del buscador: al elegir se lleva al usuario hasta ellos.
@@ -641,6 +666,18 @@ export default function Home() {
             </nav>
             <p>© 2026 Servi Cerca · Todos los derechos reservados.</p>
           </div>
+        </div>
+        <div className="container-shell pb-8">
+          <a
+            href="https://www.brandercloud.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="developer-credit"
+            aria-label="Desarrollado por Brander Cloud (se abre en una pestaña nueva)"
+          >
+            <span>Desarrollado por</span>
+            <Image src="/images/brander.png" alt="Brander Cloud" width={1200} height={630} sizes="224px" />
+          </a>
         </div>
       </footer>
     </main>
