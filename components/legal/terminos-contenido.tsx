@@ -12,12 +12,11 @@ const SECCIONES: SeccionLegal[] = [
     contenido: (
       <>
         <p>
-          El sitio Servi Cerca (en adelante, &quot;el Sitio&quot; o &quot;Servi Cerca&quot;) es administrado por{" "}
-          <Pendiente>nombre o razón social del titular</Pendiente>, RUT <Pendiente>número de RUT</Pendiente>, con
-          domicilio en <Pendiente>domicilio</Pendiente>, Uruguay.
+          El sitio Servi Cerca (en adelante, &quot;el Sitio&quot; o &quot;Servi Cerca&quot;) es administrado por Servi Cerca, RUT 150994520010, con
+          domicilio en Colonia del Sacramento, Uruguay.
         </p>
         <p>
-          Para cualquier consulta sobre estos Términos podés escribir a <Pendiente>email de contacto</Pendiente>.
+          Para cualquier consulta sobre estos Términos podés escribir a brandercloud3@gmail.com o al +598 99 627 047.
         </p>
       </>
     ),
@@ -114,7 +113,7 @@ const SECCIONES: SeccionLegal[] = [
         </p>
         <p>
           <strong>Suscripción.</strong> La publicación del perfil requiere una suscripción vigente, cuyo precio, duración y
-          forma de pago se acuerdan con Servi Cerca. <Pendiente>definir precio y condiciones</Pendiente> Antes de que
+          forma de pago se acuerdan con Servi Cerca. Teniendo los Profesionales 6 meses gratuitos. Antes de que
           venza, Servi Cerca puede avisar al Profesional por WhatsApp. Si la suscripción vence sin renovarse, el perfil
           deja de mostrarse en el Sitio hasta que se renueve; sus datos y calificaciones se conservan.
         </p>
@@ -197,7 +196,7 @@ const SECCIONES: SeccionLegal[] = [
         </ul>
         <p>
           Si detectás un perfil falso, contenido inapropiado o un problema con un Profesional, escribinos a{" "}
-          <Pendiente>email de contacto</Pendiente> para que podamos revisarlo.
+          brandercloud3@gmail.com para que podamos revisarlo.
         </p>
       </>
     ),
@@ -228,7 +227,7 @@ const SECCIONES: SeccionLegal[] = [
     contenido: (
       <p>
         Estos Términos se rigen por las leyes de la República Oriental del Uruguay. Ante cualquier controversia serán
-        competentes los tribunales de <Pendiente>ciudad / departamento</Pendiente>, sin perjuicio de los derechos que
+        competentes los tribunales de Colonia del Sacramento, Colonia, sin perjuicio de los derechos que
         la ley de relaciones de consumo (Ley N.º 17.250) reconozca a los consumidores.
       </p>
     ),

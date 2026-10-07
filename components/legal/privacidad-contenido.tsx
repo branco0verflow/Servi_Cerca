@@ -12,14 +12,13 @@ const SECCIONES: SeccionLegal[] = [
     contenido: (
       <>
         <p>
-          El responsable de la base de datos es <Pendiente>nombre o razón social del titular</Pendiente>, RUT{" "}
-          <Pendiente>número de RUT</Pendiente>, con domicilio en <Pendiente>domicilio</Pendiente>, Uruguay. Contacto
-          para temas de datos personales: <Pendiente>email de contacto</Pendiente>.
+          El responsable de la base de datos es Servi Cerca, RUT 150994520010, con domicilio en Colonia del Sacramento, Uruguay. Contacto
+          para temas de datos personales: brandercloud3@gmail.com o al +598 99 627 047.
         </p>
         <p>
           Tratamos los datos conforme a la Ley N.º 18.331 de Protección de Datos Personales y su Decreto reglamentario N.º
           414/009. La base de datos se encuentra inscripta ante la Unidad Reguladora y de Control de Datos Personales
-          (URCDP) con el número <Pendiente>número de inscripción</Pendiente>.
+          (URCDP) con el número 017/2022.
         </p>
       </>
     ),
@@ -84,7 +83,7 @@ const SECCIONES: SeccionLegal[] = [
           Para que el Sitio funcione de forma segura, el servidor procesa la dirección IP de cada solicitud para limitar
           intentos abusivos (por ejemplo, demasiados envíos seguidos). Ese control se hace en memoria y no se guarda;
           los registros técnicos del servidor pueden incluir la IP de intentos fallidos de acceso al panel de
-          administración, que se conservan por <Pendiente>plazo</Pendiente> con fines de seguridad.
+          administración, que se conservan por 24 horas con fines de seguridad.
         </p>
         <p>Usamos solo cookies y almacenamiento técnicos, necesarios para el funcionamiento:</p>
         <ul>
@@ -147,7 +146,7 @@ const SECCIONES: SeccionLegal[] = [
             Brasil. Las imágenes son privadas y se muestran mediante enlaces temporales.
           </li>
           <li>
-            <Pendiente>proveedor de alojamiento del sitio y la base de datos, y país</Pendiente>.
+            Ohio State University, USA. Almacena las fotos e imágenes en servidores ubicados en São Paulo, Brasil. Las imágenes son privadas y se muestran mediante enlaces temporales.
           </li>
         </ul>
         <p>
@@ -171,12 +170,11 @@ const SECCIONES: SeccionLegal[] = [
           historial de revisiones.
         </li>
         <li>
-          <strong>Registros rechazados o perfiles dados de baja</strong>: <Pendiente>plazo</Pendiente> desde el rechazo o
+          <strong>Registros rechazados o perfiles dados de baja</strong>: Máximo 24 horas desde el rechazo o
           la baja, y luego se eliminan.
         </li>
         <li>
-          <strong>Calificaciones</strong>: mientras exista el perfil del Profesional. Las rechazadas se conservan{" "}
-          <Pendiente>plazo</Pendiente> para prevenir abusos.
+          <strong>Calificaciones</strong>: mientras exista el perfil del Profesional. Las rechazadas se conservan 30 días para prevenir abusos.
         </li>
         <li>
           <strong>Imágenes reemplazadas o descartadas</strong>: se eliminan automáticamente del almacenamiento.
@@ -194,7 +192,7 @@ const SECCIONES: SeccionLegal[] = [
           inclusión o supresión (artículos 14 y 15 de la Ley N.º 18.331).
         </p>
         <p>
-          Para ejercerlos escribí a <Pendiente>email de contacto</Pendiente> indicando qué solicitás y un dato que nos
+          Para ejercerlos escribí a brandercloud3@gmail.com indicando qué solicitás y un dato que nos
           permita verificar que sos el titular (por ejemplo, escribiendo desde el WhatsApp o email registrados). Responderemos
           dentro de los 5 días hábiles previstos por la ley.
         </p>
