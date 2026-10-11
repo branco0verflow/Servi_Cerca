@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatedHeroTitle } from "@/components/ui/animated-hero-tittle";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -222,15 +223,15 @@ function suscribirTema(avisar: () => void) {
 
 function temaGuardado(): Tema {
   try {
-    return window.localStorage.getItem(TEMA_KEY) === "light" ? "light" : "dark";
+    return window.localStorage.getItem(TEMA_KEY) === "dark" ? "dark" : "light";
   } catch {
-    return "dark";
+    return "light";
   }
 }
 
 export default function Home() {
-  // En el servidor (y en el primer render) siempre es el tema oscuro, igual que el HTML inicial.
-  const theme = useSyncExternalStore<Tema>(suscribirTema, temaGuardado, () => "dark");
+  // En el servidor (y en el primer render) siempre es el tema claro, igual que el HTML inicial.
+  const theme = useSyncExternalStore<Tema>(suscribirTema, temaGuardado, () => "light");
   const [localidades, setLocalidades] = useState<Localidad[]>([]);
   const [oficios, setOficios] = useState<Oficio[] | null>(null);
   const [localidadElegida, setLocalidadElegida] = useState<number | null>(null);
@@ -457,7 +458,7 @@ export default function Home() {
       <div className="ambient ambient-two" aria-hidden="true" />
 
       <header className="site-header">
-        <div className="container-shell flex h-[74px] items-center justify-between">
+        <div className="container-shell flex h-18.5 items-center justify-between">
           <Brand theme={theme} />
           <button
             type="button"
@@ -482,73 +483,188 @@ export default function Home() {
                 alt="Servi Cerca"
                 width={2172}
                 height={724}
-                className="h-20 w-auto"
+                className="h-35 w-auto"
               />
             </span>
-            <h1 data-animate="intro" className="hero-title">
-              Encontrá a quien lo hace <em>cerca.</em>
-            </h1>
+            <AnimatedHeroTitle />
             <p data-animate="intro" className="hero-copy">
               Contactá directamente
               por WhatsApp, sin vueltas.
             </p>
           </div>
 
-          <div data-animate="intro" className="search-panel">
-            <div className="search-field">
-              <label htmlFor="location">
-                <MapPin className="size-4" /> Ubicación
-              </label>
-              <div className="select-wrap">
-                <select
-                  id="location"
-                  value={localidad?.id ?? ""}
-                  onChange={(event) => selectLocation(Number(event.target.value))}
-                  disabled={localidades.length === 0}
+
+          <div
+            data-animate="intro"
+            className="mx-auto w-full max-w-4xl mt-8"
+          >
+            <div
+              className="
+      rounded-[24px]
+      border border-border/70
+      bg-card/95
+      p-2.5 sm:p-3
+      shadow-[0_12px_50px_-20px_rgba(0,0,0,0.22)]
+      backdrop-blur-xl
+      transition-shadow duration-300
+      hover:shadow-[0_18px_60px_-20px_rgba(0,0,0,0.28)]
+    "
+            >
+              <div className="grid grid-cols-1 md:grid-cols-[0.9fr_1.1fr]">
+
+                {/* UBICACIÓN */}
+                <div className="relative min-w-0 px-4 py-3 sm:px-5 sm:py-4">
+                  <label
+                    htmlFor="location"
+                    className="
+            mb-2 flex items-center gap-2
+            text-[11px] font-semibold
+            uppercase tracking-[0.12em]
+            text-muted-foreground
+          "
+                  >
+                    <MapPin className="size-3.5 text-primary" />
+                    Tu ubicación
+                  </label>
+
+                  <div className="relative">
+                    <select
+                      id="location"
+                      value={localidad?.id ?? ""}
+                      onChange={(event) =>
+                        selectLocation(Number(event.target.value))
+                      }
+                      disabled={localidades.length === 0}
+                      className="
+              w-full min-w-0
+              appearance-none
+              border-0 bg-transparent
+              py-1 pr-7
+              text-[15px] font-medium
+              text-foreground
+              outline-none
+              focus-visible:ring-2
+              focus-visible:ring-primary/40
+              rounded-md
+              cursor-pointer
+              disabled:cursor-not-allowed
+              disabled:opacity-50
+            "
+                    >
+                      {localidades.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.nombre}
+                        </option>
+                      ))}
+                    </select>
+
+                    <ChevronDown
+                      aria-hidden="true"
+                      className="
+              pointer-events-none
+              absolute right-0 top-1/2
+              size-4 -translate-y-1/2
+              text-muted-foreground
+            "
+                    />
+                  </div>
+                </div>
+
+                {/* DIVISOR RESPONSIVE */}
+                <div
+                  aria-hidden="true"
+                  className="
+          mx-4 h-px bg-border/70
+          md:absolute md:hidden
+        "
+                />
+
+                {/* SERVICIO */}
+                <div
+                  className="
+          relative min-w-0
+          px-4 py-3 sm:px-5 sm:py-4
+          md:border-l md:border-border/70
+        "
                 >
-                  {localidades.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.nombre}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="size-4" aria-hidden="true" />
+                  <label
+                    className="
+            mb-2 flex items-center gap-2
+            text-[11px] font-semibold
+            uppercase tracking-[0.12em]
+            text-muted-foreground
+          "
+                  >
+                    <BriefcaseBusiness
+                      className="size-3.5 text-primary"
+                    />
+                    ¿Qué servicio necesitás?
+                  </label>
+
+                  <Combobox
+                    items={services}
+                    value={selectedService}
+                    onValueChange={(value) =>
+                      selectSuggestedService(value ?? "")
+                    }
+                  >
+                    <ComboboxInput
+                      className="
+              service-combobox
+              !h-9 !min-h-0 !w-full
+              !border-0 !bg-transparent
+              !px-0 !shadow-none
+              !text-[15px]
+              focus-visible:!ring-0
+            "
+                      placeholder="Ej. Electricista, contador..."
+                      showClear
+                      aria-label="Buscar trabajo o servicio"
+                    />
+
+                    <ComboboxContent className="service-options">
+                      <ComboboxEmpty>
+                        No encontramos ese servicio.
+                      </ComboboxEmpty>
+
+                      <ComboboxList>
+                        {(service: string) => (
+                          <ComboboxItem
+                            key={service}
+                            value={service}
+                          >
+                            <Search
+                              className="size-4 text-muted-foreground"
+                            />
+                            {service}
+                          </ComboboxItem>
+                        )}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
+                </div>
               </div>
             </div>
 
-            <div className="search-divider" aria-hidden="true" />
-
-            <div className="search-field service-field">
-              <label>
-                <BriefcaseBusiness className="size-4" /> Trabajo a realizar
-              </label>
-              <Combobox
-                items={services}
-                value={selectedService}
-                onValueChange={(value) => selectSuggestedService(value ?? "")}
-              >
-                <ComboboxInput
-                  className="service-combobox"
-                  placeholder="Escribí un servicio..."
-                  showClear
-                  aria-label="Buscar trabajo o servicio"
-                />
-                <ComboboxContent className="service-options">
-                  <ComboboxEmpty>No encontramos ese servicio.</ComboboxEmpty>
-                  <ComboboxList>
-                    {(service: string) => (
-                      <ComboboxItem key={service} value={service}>
-                        <Search className="size-4 text-muted-foreground" />
-                        {service}
-                      </ComboboxItem>
-                    )}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
+            {/* MICROCOPY INFERIOR */}
+            <div
+              className="
+      mt-4 flex items-center
+      justify-center gap-2
+      text-center
+      text-xs sm:text-sm
+      text-muted-foreground
+    "
+            >
+              <ShieldCheck className="size-4 shrink-0 text-primary" />
+              <span>
+                Encontrá profesionales y contactalos directamente.
+              </span>
             </div>
           </div>
 
-          
+
+
         </div>
       </section>
 
@@ -684,6 +800,8 @@ export default function Home() {
               height={630}
               sizes="224px"
               className="developer-logo-dark"
+              // Oculto desde el HTML: si el CSS llega viejo o no carga, igual se ve un solo logo.
+              style={{ display: "none" }}
             />
             <Image
               src="/images/brander_white.png"
@@ -692,8 +810,6 @@ export default function Home() {
               height={724}
               sizes="224px"
               className="developer-logo-light"
-              // Oculto desde el HTML: si el CSS llega viejo o no carga, igual se ve un solo logo.
-              style={{ display: "none" }}
             />
           </a>
         </div>

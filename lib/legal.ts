@@ -2,13 +2,13 @@
 // que es la que queda guardada como aceptada cuando un profesional se registra.
 
 export const VERSION_LEGAL = "1.0";
-export const VIGENCIA_LEGAL = "2 de octubre de 2026";
+export const VIGENCIA_LEGAL = "11 de octubre de 2026";
 
 /**
- * Mientras sea true, los documentos muestran un aviso de borrador. Pasar a false cuando un abogado
- * revise los textos y se completen los datos marcados entre corchetes.
+ * Mientras sea true, los documentos muestran un aviso de borrador. La versión 1.0 se dio por
+ * definitiva; volver a true solo si se publica un texto todavía en revisión.
  */
-export const LEGAL_EN_BORRADOR = true;
+export const LEGAL_EN_BORRADOR = false;
 
 export const RUTA_TERMINOS = "/terminos";
 export const RUTA_PRIVACIDAD = "/privacidad";

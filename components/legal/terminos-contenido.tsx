@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { TriangleAlert } from "lucide-react";
 
-import { DocumentoLegal, Pendiente, SeccionLegal } from "@/components/legal/documento-legal";
+import { DocumentoLegal, SeccionLegal } from "@/components/legal/documento-legal";
 import { RUTA_PRIVACIDAD } from "@/lib/legal";
 
 const SECCIONES: SeccionLegal[] = [
@@ -12,11 +13,12 @@ const SECCIONES: SeccionLegal[] = [
     contenido: (
       <>
         <p>
-          El sitio Servi Cerca (en adelante, &quot;el Sitio&quot; o &quot;Servi Cerca&quot;) es administrado por Servi Cerca, RUT 150994520010, con
-          domicilio en Colonia del Sacramento, Uruguay.
+          El sitio Servi Cerca (en adelante, &quot;el Sitio&quot; o &quot;Servi Cerca&quot;) es administrado por Servi
+          Cerca, RUT 150994520010, con domicilio en Colonia del Sacramento, Uruguay.
         </p>
         <p>
-          Para cualquier consulta sobre estos Términos podés escribir a brandercloud3@gmail.com o al +598 99 627 047.
+          Para cualquier consulta sobre estos Términos podés escribir a brandercloud3@gmail.com o al +598 99 627
+          047.
         </p>
       </>
     ),
@@ -112,10 +114,16 @@ const SECCIONES: SeccionLegal[] = [
           no debe compartirse.
         </p>
         <p>
-          <strong>Suscripción.</strong> La publicación del perfil requiere una suscripción vigente, cuyo precio, duración y
-          forma de pago se acuerdan con Servi Cerca. Teniendo los Profesionales 6 meses gratuitos. Antes de que
-          venza, Servi Cerca puede avisar al Profesional por WhatsApp. Si la suscripción vence sin renovarse, el perfil
-          deja de mostrarse en el Sitio hasta que se renueve; sus datos y calificaciones se conservan.
+          <strong>Suscripción.</strong> La publicación del perfil requiere una suscripción vigente. Hasta el 31 de enero
+          de 2027 la suscripción es gratuita. <strong>A partir del 1 de febrero de 2027, Servi Cerca podrá comenzar a
+          cobrarla.</strong> El precio, la duración y la forma de pago se informarán a cada Profesional por WhatsApp
+          antes de aplicarse y se acuerdan con Servi Cerca: no se realiza ningún cobro sin la aceptación previa del
+          Profesional, y quien no quiera continuar puede pedir la baja de su perfil sin costo.
+        </p>
+        <p>
+          Antes de que la suscripción venza, Servi Cerca puede avisar al Profesional por WhatsApp. Si vence sin
+          renovarse, el perfil deja de mostrarse en el Sitio hasta que se renueve; sus datos y calificaciones se
+          conservan.
         </p>
       </>
     ),
@@ -227,8 +235,8 @@ const SECCIONES: SeccionLegal[] = [
     contenido: (
       <p>
         Estos Términos se rigen por las leyes de la República Oriental del Uruguay. Ante cualquier controversia serán
-        competentes los tribunales de Colonia del Sacramento, Colonia, sin perjuicio de los derechos que
-        la ley de relaciones de consumo (Ley N.º 17.250) reconozca a los consumidores.
+        competentes los tribunales de Colonia del Sacramento, departamento de Colonia, sin perjuicio de los derechos
+        que la ley de relaciones de consumo (Ley N.º 17.250) reconozca a los consumidores.
       </p>
     ),
   },
@@ -239,10 +247,23 @@ export function TerminosContenido() {
     <DocumentoLegal
       titulo="Términos y condiciones"
       intro={
-        <p>
-          Estos Términos regulan el uso de Servi Cerca por parte de quienes buscan un servicio y de los Profesionales que
-          publican su perfil. Te pedimos que los leas con atención.
-        </p>
+        <>
+          <div
+            role="note"
+            className="flex gap-3 rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm leading-6 text-destructive"
+          >
+            <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+            <p>
+              <strong>Único teléfono de contacto: +598 99 627 047.</strong> Servi Cerca solo se comunica desde ese
+              número. Si alguien te escribe o te llama desde otro número en nombre de Servi Cerca para cobrarte una
+              suscripción o pedirte dinero, no es Servi Cerca: no pagues y avisanos.
+            </p>
+          </div>
+          <p>
+            Estos Términos regulan el uso de Servi Cerca por parte de quienes buscan un servicio y de los Profesionales
+            que publican su perfil. Te pedimos que los leas con atención.
+          </p>
+        </>
       }
       secciones={SECCIONES}
     />

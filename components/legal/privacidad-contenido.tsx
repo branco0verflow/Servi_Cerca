@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { DocumentoLegal, Pendiente, SeccionLegal } from "@/components/legal/documento-legal";
+import { DocumentoLegal, SeccionLegal } from "@/components/legal/documento-legal";
 import { RUTA_TERMINOS } from "@/lib/legal";
 
 const SECCIONES: SeccionLegal[] = [
@@ -146,7 +146,15 @@ const SECCIONES: SeccionLegal[] = [
             Brasil. Las imágenes son privadas y se muestran mediante enlaces temporales.
           </li>
           <li>
-            Ohio State University, USA. Almacena las fotos e imágenes en servidores ubicados en São Paulo, Brasil. Las imágenes son privadas y se muestran mediante enlaces temporales.
+            <strong>Vercel</strong>: aloja el sitio web y recibe las solicitudes de quienes lo visitan. Estados Unidos.
+          </li>
+          <li>
+            <strong>Render</strong>: aloja el servidor que procesa los registros, las calificaciones y el panel de
+            administración, en Ohio, Estados Unidos.
+          </li>
+          <li>
+            <strong>Aiven</strong>: aloja la base de datos donde se guardan los perfiles y las calificaciones, en
+            Estados Unidos.
           </li>
         </ul>
         <p>

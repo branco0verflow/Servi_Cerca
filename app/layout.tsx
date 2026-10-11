@@ -7,6 +7,14 @@ const TITULO = "Servi Cerca | Profesionales cerca tuyo";
 const DESCRIPCION =
   "Encontrá carpinteros, electricistas, jardineros y otros profesionales de tu zona y contactalos directamente por WhatsApp.";
 
+// Imagen que muestran WhatsApp y las redes al compartir el enlace del sitio (public/images).
+const IMAGEN_COMPARTIR = {
+  url: "/images/opengraph-image.png",
+  width: 1200,
+  height: 630,
+  alt: "Servi Cerca: conectamos a quienes necesitan resolver algo con quienes saben hacerlo",
+};
+
 export const metadata: Metadata = {
   // Base para las direcciones completas que exigen WhatsApp y las redes (imagen y enlace al compartir).
   metadataBase: new URL(SITE_URL),
@@ -16,7 +24,6 @@ export const metadata: Metadata = {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
   },
-  // La imagen sale de app/opengraph-image.tsx.
   openGraph: {
     type: "website",
     siteName: NOMBRE_SITIO,
@@ -24,8 +31,9 @@ export const metadata: Metadata = {
     url: "/",
     title: TITULO,
     description: DESCRIPCION,
+    images: [IMAGEN_COMPARTIR],
   },
-  twitter: { card: "summary_large_image", title: TITULO, description: DESCRIPCION },
+  twitter: { card: "summary_large_image", title: TITULO, description: DESCRIPCION, images: [IMAGEN_COMPARTIR] },
 };
 
 export default function RootLayout({
@@ -35,7 +43,7 @@ export default function RootLayout({
 }>) {
   return (
     // suppressHydrationWarning: el tema guardado y las extensiones del navegador cambian atributos de <html>.
-    <html lang="es" data-theme="dark" suppressHydrationWarning>
+    <html lang="es" data-theme="light" suppressHydrationWarning>
       <body>{children}</body>
     </html>
   );
